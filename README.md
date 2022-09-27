@@ -26,7 +26,7 @@ This Azure Sample contains a Bicep template to deploy a working example of the A
 ## Prerequisites
 
 * Azure Subscription with Contributor access
-* [AZ CLI][azcli], either installed locally or using [Azure Cloud Shell][cloudshell].
+* Latest version of [AZ CLI][azcli], either installed locally or using [Azure Cloud Shell][cloudshell].
 
 ## Deployment Steps
 
@@ -40,7 +40,7 @@ cd highly-available-zone-redundant-webapp
 ### 2. Create a resource group
 
 ```
-az group create -n zr-ha-webapp-rg -l westus2
+az group create --name zr-ha-webapp-rg --location westus2
 ```
 
 ### 3. Create a deployment
@@ -48,17 +48,30 @@ az group create -n zr-ha-webapp-rg -l westus2
 Deploy the solution using the bicep template provided by creating a deployment.
 
 ```
-az deployment group create -g zr-ha-webapp-rg --template-file ./bicep/main.bicep
+az deployment group create --resource-group zr-ha-webapp-rg --template-file ./bicep/main.bicep
 ```
 
 ## Bicep parameters
+
+`bicep/main.bicep` has several optional parameters that can be used to adjust deployment configuration. These can be passed inline with the `az deployment group create` command. For example:
+
+```
+az deployment group create --resource-group zr-ha-webapp-rg --template-file ./bicep/main.bicep --parameters staticWebAppLocation=westus2
+```
 
 | param | Description | Default value |
 | -- | -- | -- |
 | `applicationName` | Optional. A name that will be prepended to all deployed resources. | An alphanumeric id that is unique to the resource group. |
 | `location` | Optional. The Azure region (location) to deploy to. Must be a region that supports availability zones. | Resource group location. |
-| `staticWebAppsLocation` | Optional. The Azure region (location) to deploy Static Web Apps to. Even though Static Web Apps is a non-regional resource, a location must be chosen from a limited subset of region. | The value of the `location` parameter, or the resource group location. |
-| `sqlAdminPassword` | Optional. A password for the Azure SQL server admin user. | Defaults to a new GUID. |
+| `staticWebAppsLocation` | Optional. The Azure region (location) to deploy Static Web Apps to. Even though Static Web Apps is a non-regional resource, a location must be chosen from a limited subset of regions. | The value of the `location` parameter, or the resource group location. |
+| `tags` | Optional. An Azure tags object for tagging parent resources that support tags. | `{ Project: 'Azure highly-available zone-redundant web application' }` |
+| `sqlAdmin` | 'Optional. SQL admin username. | `${applicationName}-admin` |
+| `sqlAdminPassword` | Optional. A password for the Azure SQL server admin user. | A new GUID |
+| `sqlDatabaseName` | Optional. Name of the SQL database to create. | `${applicationName}-sql-db` |
+| `cosmosDatabaseName` | Optional. Name of the Cosmos database to create. | `${applicationName}-db` |
+| `cosmosContainerName` | Optional. Name of the Cosmos DB container to create. | `Container1` |
+| `cosmosPartitionKeys` | Optional. Array of properties that make up the Partition Key for the Cosmos DB container. | `[ 'id' ]` |
+| `servicebusQueueName` | Optional. Name of the Service Bus queue to create | `Queue1` |
 
 ## Instructions
 
@@ -76,7 +89,7 @@ Configure continuous deployment pipelines to deploy applications into Azure App 
 Delete the resource group to cleanup all resources:
 
 ```
-az group delete -n zr-ha-webapp-rg 
+az group delete --name zr-ha-webapp-rg --no-wait
 ```
 
 ## Azure Policies

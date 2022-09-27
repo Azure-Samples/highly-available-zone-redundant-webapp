@@ -1,6 +1,6 @@
 ---
-name: Feature requests
-about: Request features to improve the sample
+name: Feature request
+about: Request a feature to improve the sample
 title: ''
 labels: ''
 assignees: ''

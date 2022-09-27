@@ -4,34 +4,34 @@ param applicationName string = 'zrhaweb-${uniqueString(resourceGroup().id)}'
 @description('Optional. The Azure region (location) to deploy to. Must be a region that supports availability zones. Defaults to the resource group location.')
 param location string = resourceGroup().location
 
-@description('Optional. The Azure region (location) to deploy Static Web Apps to. Even though Static Web Apps is a non-regional resource, a location must be chosen from a limited subset of region. Defaults to the value of the location parameter.')
+@description('Optional. The Azure region (location) to deploy Static Web Apps to. Even though Static Web Apps is a non-regional resource, a location must be chosen from a limited subset of regions. Defaults to the value of the location parameter.')
 param staticWebAppLocation string = location
 
-@description('Optional. An Azure tags object for tagging resources that support tags.')
+@description('Optional. An Azure tags object for tagging parent resources that support tags.')
 param tags object = {
-  Project: 'Azure zone-redundant highly-available web application'
+  Project: 'Azure highly-available zone-redundant web application'
 }
 
-@description('SQL admin username. Defaults to \'\${applicationName}-admin\'')
+@description('Optional. SQL admin username. Defaults to \'\${applicationName}-admin\'')
 param sqlAdmin string = '${applicationName}-admin'
 
 @description('Optional. A password for the Azure SQL server admin user. Defaults to a new GUID.')
 @secure()
 param sqlAdminPassword string = newGuid()
 
-@description('Name of the SQL database to create. Defaults to \'\${applicationName}-sql-db\'')
+@description('Optional. Name of the SQL database to create. Defaults to \'\${applicationName}-sql-db\'')
 param sqlDatabaseName string = '${applicationName}-sql-db'
 
-@description('Name of the Cosmos database to create. Defaults to \'\${applicationName}-db\'')
+@description('Optional. Name of the Cosmos database to create. Defaults to \'\${applicationName}-db\'')
 param cosmosDatabaseName string = '${applicationName}-db'
 
-@description('Name of the Cosmos DB container to create. Defaults to \'Container1\'')
+@description('Optional. Name of the Cosmos DB container to create. Defaults to \'Container1\'')
 param cosmosContainerName string = 'Container1'
 
-@description('Array of properties that make up the Partition Key for the Cosmos DB container. Defaults to [ \'id\' ].')
+@description('Optional. Array of properties that make up the Partition Key for the Cosmos DB container. Defaults to [ \'id\' ].')
 param cosmosPartitionKeys array = [ '/id' ]
 
-@description('Name of the Service Bus queue to create. Defaults to \'Queue1\'')
+@description('Optional. Name of the Service Bus queue to create. Defaults to \'Queue1\'')
 param servicebusQueueName string = 'Queue1'
 
 
