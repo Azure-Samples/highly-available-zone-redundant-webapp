@@ -148,7 +148,7 @@ resource vnetResource 'Microsoft.Network/virtualNetworks@2022-01-01' = {
     subnets:[
       // [0] Web app vnet integration subnet
       {
-        name: 'webapp-backend'
+        name: 'webapp-backend-subnet'
         properties:{
           addressPrefix: '10.0.0.0/26'
           delegations: [
@@ -163,7 +163,7 @@ resource vnetResource 'Microsoft.Network/virtualNetworks@2022-01-01' = {
       }
       // [1] Functions VNet integration subnet
       {
-        name: 'functions-backend'
+        name: 'functions-backend-subnet'
         properties:{
           addressPrefix: '10.0.0.64/26'          
           delegations: [
@@ -178,7 +178,7 @@ resource vnetResource 'Microsoft.Network/virtualNetworks@2022-01-01' = {
       }
       // [2] Functions private endpoint subnet
       {
-        name: 'functions-frontend'
+        name: 'functions-frontend-subnet'
         properties:{
           addressPrefix: '10.0.1.0/27'
           privateEndpointNetworkPolicies: 'Disabled'
@@ -187,7 +187,7 @@ resource vnetResource 'Microsoft.Network/virtualNetworks@2022-01-01' = {
       }
       // [3] Storage private endpoint subnet
       {
-        name: 'storage'
+        name: 'storage-subnet'
         properties:{
           addressPrefix: '10.0.1.32/27'
           privateEndpointNetworkPolicies: 'Disabled'
@@ -196,7 +196,7 @@ resource vnetResource 'Microsoft.Network/virtualNetworks@2022-01-01' = {
       }
       // [4] Azure Cache for Redis private endpoint subnet
       {
-        name: 'redis'
+        name: 'redis-subnet'
         properties:{
           addressPrefix: '10.0.1.64/27'
           privateEndpointNetworkPolicies: 'Disabled'
@@ -205,7 +205,7 @@ resource vnetResource 'Microsoft.Network/virtualNetworks@2022-01-01' = {
       }
       // [5] Service Bus private endpoint subnet
       {
-        name: 'servicebus'
+        name: 'servicebus-subnet'
         properties:{
           addressPrefix: '10.0.1.96/27'
           privateEndpointNetworkPolicies: 'Disabled'
@@ -214,7 +214,7 @@ resource vnetResource 'Microsoft.Network/virtualNetworks@2022-01-01' = {
       }
       // [6] Azure Search private endpoint subnet
       {
-        name: 'cog-search'
+        name: 'search-subnet'
         properties:{
           addressPrefix: '10.0.1.128/27'
           privateEndpointNetworkPolicies: 'Disabled'
@@ -223,7 +223,7 @@ resource vnetResource 'Microsoft.Network/virtualNetworks@2022-01-01' = {
       }
       // [7] Cosmos DB private endpoint subnet
       {
-        name: 'cosmos'
+        name: 'cosmos-subnet'
         properties:{
           addressPrefix: '10.0.1.160/27'
           privateEndpointNetworkPolicies: 'Disabled'
@@ -232,7 +232,7 @@ resource vnetResource 'Microsoft.Network/virtualNetworks@2022-01-01' = {
       }
       // [8] Key Vault private endpoint subnet
       {
-        name: 'vault'
+        name: 'keyvault-subnet'
         properties:{
           addressPrefix: '10.0.1.192/27'
           privateEndpointNetworkPolicies: 'Disabled'
@@ -241,7 +241,7 @@ resource vnetResource 'Microsoft.Network/virtualNetworks@2022-01-01' = {
       }
       // [9] Azure SQL DB private endpoint subnet
       {
-        name: 'sqlServer'
+        name: 'sql-server-subnet'
         properties:{
           addressPrefix: '10.0.1.224/27'
           privateEndpointNetworkPolicies: 'Disabled'
@@ -252,7 +252,6 @@ resource vnetResource 'Microsoft.Network/virtualNetworks@2022-01-01' = {
   }
   tags: tags
 }
-
 
 
 // AZURE MONITOR - APPLICATION INSIGHTS
@@ -893,11 +892,11 @@ resource appservicePlanResource 'Microsoft.Web/serverfarms@2022-03-01' = {
     tier: 'PremiumV2'
     size: 'P2v2'
     family: 'Pv2'
-    capacity: 3
+    capacity: 3   // Minimum 3 instances required for zone-redundancy
   }
   properties: {
     zoneRedundant: true
-    targetWorkerCount: 3
+    targetWorkerCount: 3  // Minimum 3 instances required for zone-redundancy
   }
 }
 
