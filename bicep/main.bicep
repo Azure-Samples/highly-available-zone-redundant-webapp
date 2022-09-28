@@ -34,11 +34,13 @@ param cosmosPartitionKeys array = [ '/id' ]
 @description('Optional. Name of the Service Bus queue to create. Defaults to \'Queue1\'')
 param servicebusQueueName string = 'Queue1'
 
+@description('Optional. The version of App Service Premium SKU to deploy. Allowed values \'PremiumV2\' or \'PremiumV3\'. Defaults to \'PremiumV3\'.')
+@allowed(['PremiumV2', 'PremiumV3'])
+param appServicePlanPremiumSku string = 'PremiumV3'
 
 // VARS
 var functionsPlan = '${applicationName}-functions-plan'
 var functionApp1 = '${applicationName}-func'
-var functionApp2 = '${applicationName}-func-test'
 var functionContentShareName = 'function-content-share'
 
 // Storage account name must be lowercase, alpha-numeric, and less the 24 chars in length
@@ -134,6 +136,22 @@ var privateLinkKeyVaultDnsNames = {
   AzureChinaCloud: 'privatelink.vaultcore.azure.cn'
 }
 
+var appServicePlanPremiumSkus = {
+  PremiumV2: {
+    name: 'P2v2'
+    tier: 'PremiumV2'
+    size: 'P2v2'
+    family: 'Pv2'
+    capacity: 3
+  }
+  PremiumV3: {
+    name: 'P1v3'
+    tier: 'PremiumV3'
+    size: 'P1v3'
+    family: 'Pv3'
+    capacity: 3
+  }
+}
 
 // VNET
 resource vnetResource 'Microsoft.Network/virtualNetworks@2022-01-01' = {
@@ -283,7 +301,7 @@ resource privateSitesDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
     name: '${last(split(vnetResource.id, '/'))}-vnetlink'
     location: 'global'
     properties:{
-      registrationEnabled: false
+      registrationEnabled: false    // * Always false for Private Endpoint DNS Zone VNet links
       virtualNetwork:{
         id: vnetResource.id
       }
@@ -453,6 +471,11 @@ resource privateSqlDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
 
 // PRIVATE ENDPOINTS
 
+//  Each Private endpoint (PEP) is comprised of: 
+//    1. Private endpoint resource, 
+//    2. Private link service connection to the target resource, 
+//    3. Private DNS zone group, linked to a VNet-linked private DNS Zone
+
 resource functionApp1PepResource 'Microsoft.Network/privateEndpoints@2022-01-01' = {
   name: '${functionApp1}-pep'
   location: location
@@ -463,7 +486,7 @@ resource functionApp1PepResource 'Microsoft.Network/privateEndpoints@2022-01-01'
     }
     privateLinkServiceConnections: [
       {
-        name: '${functionApp1}-pep-link'
+        name: 'peplink'
         properties: {
           privateLinkServiceId: functionApp1Resource.id
           groupIds: [
@@ -474,11 +497,11 @@ resource functionApp1PepResource 'Microsoft.Network/privateEndpoints@2022-01-01'
     ]
   }
   resource privateDnsZoneGroup 'privateDnsZoneGroups' = {
-    name: '${functionApp1}-pep-dnszonegroup'
+    name: 'dnszonegroup'
     properties: {
       privateDnsZoneConfigs: [
         {
-          name: 'config'
+          name: 'config'    // must be 'config'
           properties: {
             privateDnsZoneId: privateSitesDnsZone.id
           }
@@ -498,7 +521,7 @@ resource blobStoragePepResource 'Microsoft.Network/privateEndpoints@2022-01-01' 
     }
     privateLinkServiceConnections: [
       {
-        name: '${functionsStorage}-pep-link'
+        name: 'peplink'
         properties: {
           privateLinkServiceId: storageResource.id
           groupIds: [
@@ -509,7 +532,7 @@ resource blobStoragePepResource 'Microsoft.Network/privateEndpoints@2022-01-01' 
     ]
   }
   resource privateDnsZoneGroup 'privateDnsZoneGroups' = {
-    name: '${functionsStorage}-pep-dnszonegroup'
+    name: 'dnszonegroup'
     properties: {
       privateDnsZoneConfigs: [
         {
@@ -533,7 +556,7 @@ resource tableStoragePepResource 'Microsoft.Network/privateEndpoints@2022-01-01'
     }
     privateLinkServiceConnections: [
       {
-        name: '${functionsStorage}-pep-link'
+        name: 'peplink'
         properties: {
           privateLinkServiceId: storageResource.id
           groupIds: [
@@ -544,7 +567,7 @@ resource tableStoragePepResource 'Microsoft.Network/privateEndpoints@2022-01-01'
     ]
   }
   resource privateDnsZoneGroup 'privateDnsZoneGroups' = {
-    name: '${functionsStorage}-pep-dnszonegroup'
+    name: 'dnszonegroup'
     properties: {
       privateDnsZoneConfigs: [
         {
@@ -568,7 +591,7 @@ resource queueStoragePepResource 'Microsoft.Network/privateEndpoints@2022-01-01'
     }
     privateLinkServiceConnections: [
       {
-        name: '${functionsStorage}-pep-link'
+        name: 'peplink'
         properties: {
           privateLinkServiceId: storageResource.id
           groupIds: [
@@ -579,7 +602,7 @@ resource queueStoragePepResource 'Microsoft.Network/privateEndpoints@2022-01-01'
     ]
   }
   resource privateDnsZoneGroup 'privateDnsZoneGroups' = {
-    name: '${functionsStorage}-pep-dnszonegroup'
+    name: 'dnszonegroup'
     properties: {
       privateDnsZoneConfigs: [
         {
@@ -603,7 +626,7 @@ resource fileStoragePepResource 'Microsoft.Network/privateEndpoints@2022-01-01' 
     }
     privateLinkServiceConnections: [
       {
-        name: '${functionsStorage}-pep-link'
+        name: 'peplink'
         properties: {
           privateLinkServiceId: storageResource.id
           groupIds: [
@@ -614,7 +637,7 @@ resource fileStoragePepResource 'Microsoft.Network/privateEndpoints@2022-01-01' 
     ]
   }
   resource privateDnsZoneGroup 'privateDnsZoneGroups' = {
-    name: '${functionsStorage}-pep-dnszonegroup'
+    name: 'dnszonegroup'
     properties: {
       privateDnsZoneConfigs: [
         {
@@ -638,7 +661,7 @@ resource redisPepResource 'Microsoft.Network/privateEndpoints@2022-01-01' = {
     }
     privateLinkServiceConnections: [
       {
-        name: '${redis}-pep-link'
+        name: 'peplink'
         properties: {
           privateLinkServiceId: redisResource.id
           groupIds: [
@@ -813,7 +836,7 @@ resource keyvaultPepResource 'Microsoft.Network/privateEndpoints@2022-01-01' = {
     }
     privateLinkServiceConnections: [
       {
-        name: '${keyvault}-pep-link'
+        name: 'peplink'
         properties: {
           privateLinkServiceId: keyvaultResource.id
           groupIds: [
@@ -824,7 +847,7 @@ resource keyvaultPepResource 'Microsoft.Network/privateEndpoints@2022-01-01' = {
     ]
   }
   resource privateDnsZoneGroup 'privateDnsZoneGroups' = {
-    name: '${keyvault}-pep-dnszonegroup'
+    name: 'dnszonegroup'
     properties: {
       privateDnsZoneConfigs: [
         {
@@ -853,6 +876,7 @@ resource storageResource 'Microsoft.Storage/storageAccounts@2022-05-01' = {
     publicNetworkAccess: 'Disabled'
     accessTier: 'Hot'
   }
+  // When deploying a Function App with Bicep, a content fileshare must be explicitly created or Function App will not start.
   resource functionContentShare 'fileServices' = {
     name: 'default'
     resource share 'shares@2022-05-01' = {
@@ -887,19 +911,12 @@ resource appservicePlanResource 'Microsoft.Web/serverfarms@2022-03-01' = {
   location: location
   tags: tags
   kind: 'elastic'
-  sku: {
-    name: 'P2v2'
-    tier: 'PremiumV2'
-    size: 'P2v2'
-    family: 'Pv2'
-    capacity: 3   // Minimum 3 instances required for zone-redundancy
-  }
+  sku: appServicePlanPremiumSkus[appServicePlanPremiumSku]
   properties: {
     zoneRedundant: true
-    targetWorkerCount: 3  // Minimum 3 instances required for zone-redundancy
+    targetWorkerCount: 3    // Minimum 3 instances required for zone-redundancy
   }
 }
-
 
 // WEB APPS
 
@@ -922,7 +939,6 @@ resource webApp1Resource 'Microsoft.Web/sites@2022-03-01' = {
       windowsFxVersion: 'dotnet|6.0'
     }
   }
-
   resource config 'config' = {
     name: 'web'
     properties: {
@@ -932,6 +948,7 @@ resource webApp1Resource 'Microsoft.Web/sites@2022-03-01' = {
   }
 }
 
+// App settings deployed on 'existing' resource to avoid circular reference webapp <=> key vault.
 resource webapp1Existing 'Microsoft.Web/sites@2022-03-01' existing = {
   name: app1
   resource webapp1ExistingConfig 'config@2020-12-01' = {
@@ -946,6 +963,9 @@ resource webapp1Existing 'Microsoft.Web/sites@2022-03-01' existing = {
       AZURE_SEARCH_ENDPOINT_URI: searchEndpointUrl[environment().name]
       AZURE_SEARCH_API_KEY: '@Microsoft.KeyVault(SecretUri=${keyvaultResource.properties.vaultUri}secrets/${searchApiKeySecretName}/)'
     }
+    dependsOn:[
+      webApp1Resource
+    ]
   }
 }
 
@@ -969,7 +989,6 @@ resource webApp2Resource 'Microsoft.Web/sites@2022-03-01' = {
       windowsFxVersion: 'dotnet|6.0'
     }
   }
-
   resource config 'config' = {
     name: 'web'
     properties: {
@@ -986,6 +1005,9 @@ resource webapp2Existing 'Microsoft.Web/sites@2022-03-01' existing = {
     properties: {
       APPINSIGHTS_INSTRUMENTATIONKEY: insightsResource.properties.InstrumentationKey
     }
+    dependsOn:[
+      webApp2Resource
+    ]
   }
 }
 
@@ -1009,7 +1031,6 @@ resource functionApp1Resource 'Microsoft.Web/sites@2022-03-01' = {
       windowsFxVersion: 'dotnet|6.0'
     }
   }
-
   resource config 'config' = {
     name: 'web'
     properties: {
@@ -1019,6 +1040,7 @@ resource functionApp1Resource 'Microsoft.Web/sites@2022-03-01' = {
   }
 }
 
+// App settings deployed on 'existing' resource to avoid circular reference function app <=> key vault.
 resource functionApp1Existing 'Microsoft.Web/sites@2022-03-01' existing = {
   name: functionApp1
   resource functionApp1ExistingConfig 'config@2020-12-01' = {
@@ -1035,51 +1057,9 @@ resource functionApp1Existing 'Microsoft.Web/sites@2022-03-01' existing = {
       AZURE_SERVICE_BUS_FQ_NAMESPACE: replace(replace(servicebusResource.properties.serviceBusEndpoint, 'https://', ''), ':443/', '')
       AZURE_SERVICE_BUS_QUEUE_NAME: servicebusQueueName
     }
-  }
-}
-
-resource functionApp2Resource 'Microsoft.Web/sites@2022-03-01' = {
-  name: functionApp2
-  location: location
-  tags: tags
-  kind: 'functionapp'
-  identity: {
-    type: 'SystemAssigned'
-  }
-  properties: {
-    httpsOnly: true
-    serverFarmId: functionsPlanResource.id
-    virtualNetworkSubnetId: vnetResource.properties.subnets[1].id
-    siteConfig: {
-      vnetRouteAllEnabled: true
-      windowsFxVersion: 'dotnet|6.0'
-    }
-  }
-  resource config 'config' = {
-    name: 'web'
-    properties: {
-      ftpsState: 'Disabled'
-      minTlsVersion: '1.2'
-    }
-  }
-}
-
-resource functionApp2Existing 'Microsoft.Web/sites@2022-03-01' existing = {
-  name: functionApp2
-  resource functionApp2ExistingConfig 'config@2020-12-01' = {
-    name: 'appsettings'
-    properties: {
-      APPINSIGHTS_INSTRUMENTATIONKEY: insightsResource.properties.InstrumentationKey
-      AzureWebJobsStorage: 'DefaultEndpointsProtocol=https;AccountName=${storageResource.name};AccountKey=${storageResource.listKeys().keys[0].value}'
-      WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: 'DefaultEndpointsProtocol=https;AccountName=${storageResource.name};AccountKey=${storageResource.listKeys().keys[0].value}'
-      FUNCTIONS_EXTENSION_VERSION: '~4'
-      FUNCTIONS_WORKER_RUNTIME: 'dotnet-isolated'
-      WEBSITE_CONTENTOVERVNET: '1'
-      WEBSITE_CONTENTSHARE: functionContentShareName
-      SQL_SERVER_CONNECTION_STRING: '@Microsoft.KeyVault(SecretUri=${keyvaultResource.properties.vaultUri}secrets/${sqlConnectionStringSecretName}/)'
-      AZURE_SERVICE_BUS_FQ_NAMESPACE: replace(replace(servicebusResource.properties.serviceBusEndpoint, 'https://', ''), ':443/', '')
-      AZURE_SERVICE_BUS_QUEUE_NAME: servicebusQueueName
-    }
+    dependsOn:[
+      functionApp1Resource
+    ]
   }
 }
 
@@ -1231,6 +1211,7 @@ resource apiFrontDoorRouteResource 'Microsoft.Cdn/profiles/afdEndpoints/routes@2
   }
 }
 
+
 // REDIS PREMIUM
 resource redisResource 'Microsoft.Cache/redis@2022-05-01' = {
   name: redis
@@ -1366,40 +1347,26 @@ resource keyvaultResource 'Microsoft.KeyVault/vaults@2022-07-01' = {
           ]
         }
       }
-      {
-        objectId: functionApp2Resource.identity.principalId
-        tenantId: functionApp2Resource.identity.tenantId
-        permissions: {
-          secrets: [
-            'list'
-            'get'
-          ]
-        }
-      }
     ]
   }
-
   resource redisSecretResource 'secrets@2022-07-01' = {
     name: redisConnectionStringSecretName
     properties: {
       value: '${redisResource.properties.hostName}:6380,password=${redisResource.listKeys().primaryKey},ssl=True,abortConnect=False'
     }
   }
-
   resource sqlSecretResource 'secrets@2022-07-01' = {
     name: sqlConnectionStringSecretName
     properties: {
       value: 'Server=tcp:${sqlResource.properties.fullyQualifiedDomainName},1433;Initial Catalog=${sqlDatabaseName};Persist Security Info=False;User ID=${sqlAdmin};Password=${sqlAdminPassword};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'
     }
   }
-
-  resource searcSecretResource 'secrets@2022-07-01' = {
+  resource searchSecretResource 'secrets@2022-07-01' = {
     name: searchApiKeySecretName
     properties: {
       value: cogSearchResource.listAdminKeys().primaryKey
     }
   }
-
 }
 
 
@@ -1432,23 +1399,12 @@ resource sqlResource 'Microsoft.Sql/servers@2021-11-01' = {
 
 // Assigns Function App 1 data role to Storage Account
 resource functionApp1RoleAssignmentStorageAccount 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  // guid = service.id (scope) + client.id (principal) + roleDefinition.id
+  // * Name of a role assignment must be a GUID and must be unique within the Subscription.
   name: guid(storageResource.id, functionApp1Resource.id, roleDefinitionIds.storage)
   scope: storageResource
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionIds.storage)
     principalId: functionApp1Resource.identity.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-// Assigns Function App 2 data role to Storage Account
-resource functionApp2RoleAssignmentStorageAccount 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storageResource.id, functionApp2Resource.id, roleDefinitionIds.storage)
-  scope: storageResource
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionIds.storage)
-    principalId: functionApp2Resource.identity.principalId
     principalType: 'ServicePrincipal'
   }
 }
@@ -1460,17 +1416,6 @@ resource functionApp1RoleAssignmentServiceBus 'Microsoft.Authorization/roleAssig
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionIds.servicebus)
     principalId: functionApp1Resource.identity.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-// Assigns Function App 2 data role to Service Bus
-resource functionApp2RoleAssignmentServiceBus 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(servicebusResource.id, functionApp2Resource.id, roleDefinitionIds.servicebus)
-  scope: servicebusResource
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionIds.servicebus)
-    principalId: functionApp2Resource.identity.principalId
     principalType: 'ServicePrincipal'
   }
 }
@@ -1512,9 +1457,7 @@ output applicationName string = applicationName
 output environmentOutput object = environment()
 output functionAppPlanName string = functionsPlan
 output functionAppHostname string = functionApp1Resource.properties.defaultHostName
-output functionApp2Hostname string = functionApp2Resource.properties.defaultHostName
 output functionAppName string = functionApp1
-output functionApp2Name string = functionApp2
 output frontDoorApiHostname string = apiEndpoint.properties.hostName
 output frontDoorSpaHostname string = spaEndpoint.properties.hostName
 output insightsInstrumentationKey string = insightsResource.properties.InstrumentationKey
