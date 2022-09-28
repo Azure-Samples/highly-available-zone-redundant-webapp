@@ -1510,13 +1510,15 @@ resource webAppRoleAssignmentCosmosDbSql 'Microsoft.DocumentDB/databaseAccounts/
 // Outputs
 output applicationName string = applicationName
 output environmentOutput object = environment()
+output functionAppPlanName string = functionsPlan
 output functionAppHostname string = functionApp1Resource.properties.defaultHostName
 output functionApp2Hostname string = functionApp2Resource.properties.defaultHostName
-output functionAppName string = functionApp1Resource.name
-output functionApp2Name string = functionApp2Resource.name
+output functionAppName string = functionApp1
+output functionApp2Name string = functionApp2
 output frontDoorApiHostname string = apiEndpoint.properties.hostName
 output frontDoorSpaHostname string = spaEndpoint.properties.hostName
 output insightsInstrumentationKey string = insightsResource.properties.InstrumentationKey
 output staticWebAppHostname string = staticWebAppResource.properties.defaultHostname
-output webappName string = webApp1Resource.name
+output webappPlanName string = appServicePlan
+output webappName string = app1
 output webappHostname string = webApp1Resource.properties.defaultHostName
