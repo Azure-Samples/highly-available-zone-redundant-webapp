@@ -1465,3 +1465,4 @@ output staticWebAppHostname string = staticWebAppResource.properties.defaultHost
 output webappPlanName string = appServicePlan
 output webappName string = app1
 output webappHostname string = webApp1Resource.properties.defaultHostName
+
