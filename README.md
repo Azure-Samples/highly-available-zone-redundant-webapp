@@ -80,6 +80,7 @@ az deployment group create --resource-group hazrwebapp-wus3-rg --template-file .
 | `cosmosContainerName` | Optional. Name of the Cosmos DB container to create. | `Container1` |
 | `cosmosPartitionKeys` | Optional. Array of properties that make up the Partition Key for the Cosmos DB container. | `[ 'id' ]` |
 | `servicebusQueueName` | Optional. Name of the Service Bus queue to create | `Queue1` |
+| `appServicePlanPremiumSku` | Optional. The version of App Service Premium SKU to deploy. Allowed values `PremiumV2` or `PremiumV3`. | `PremiumV3` |
 
 ## Instructions
 
