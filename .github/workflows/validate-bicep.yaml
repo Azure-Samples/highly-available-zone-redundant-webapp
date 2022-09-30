@@ -27,7 +27,6 @@ jobs:
         shell: pwsh
         run: |
           $rg = 'hazrwebapp-wus3-ghactions'
-          az group create -n $rg -l westus3 
           $properties = ( az deployment group validate -g $rg -f ./bicep/main.bicep --parameters staticWebAppLocation=westus2 appServicePlanPremiumSku=PremiumV2 --query properties | ConvertFrom-Json )
           $properties
           
