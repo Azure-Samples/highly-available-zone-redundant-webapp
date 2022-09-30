@@ -24,12 +24,11 @@ jobs:
       - name: az validate
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: powershell
-        uses: azure/CLI@v1
+        shell: pwsh
         run: |
           $rg = 'hazrwebapp-wus3-ghactions'
           az group create -n $rg -l westus3 
-          $properties = ( $az deployment group validate -g $rg -f ./bicep/main.bicep --parameters staticWebAppLocation=westus2 appServicePlanPremiumSku=PremiumV2 --query properties | ConvertFrom-Json )
+          $properties = ( az deployment group validate -g $rg -f ./bicep/main.bicep --parameters staticWebAppLocation=westus2 appServicePlanPremiumSku=PremiumV2 --query properties | ConvertFrom-Json )
           
           if ($properties -eq $null || $properties.provisioningState -ne 'Succeeded') {
             $properties
