@@ -21,7 +21,15 @@ products:
 
 # Highly available zone-redundant web application
 
-This Azure Sample contains a Bicep template to deploy a working example of the Azure architecture center reference architecture: [Highly available zone-redundant web application][hazrwebapp]. The considerations section of the reference architecture document should be reviewed carefully, and the template modified to meet business requirements, before deploying to production environments.
+This sample contains a Bicep template that deploys a working example of the Azure architecture center reference architecture: [Highly available zone-redundant web application][hazrwebapp]. The reference architecture and sample show how to run a web-app workload on Azure App Services in a zone-redundant configuration. [Zone-redundant services][az-ha-services] provide high-availability by replicating your services and data across Availability zones to protect from single points of failure.
+
+![Highly available zone-redundant web application architecture diagram](./images/zone-redundant-web-app-diagram.png)
+
+Availability zones spread a solution across multiple independent zones within a region, allowing for an application to continue functioning when one zone fails. Most foundational and mainstream Azure services, and many specialized Azure services provide support for availability zones today. 
+
+All of the Azure services in this architecture are either always-available or zone-redundant services. Azure Front Door, Azure Active Directory (Azure AD), Azure DNS and Static Web Apps are always-available (non-regional) services, resilient to zone and region-wide outages. All other services are zone-redundant.
+
+> For detailed information, recommendations and important considerations, see [Highly available zone-redundant web application][hazrwebapp] in the Azure Architecture Center.
 
 ## Prerequisites
 
@@ -107,3 +115,4 @@ This implementation doesn't provide any workload-level Azure Policies to govern 
 [aac]:https://learn.microsoft.com/azure/architecture/
 [azcli]:https://learn.microsoft.com/cli/azure/install-azure-cli
 [cloudshell]:https://learn.microsoft.com/azure/cloud-shell/overview
+[az-ha-services]:https://docs.microsoft.com/azure/availability-zones/az-region#highly-available-services
