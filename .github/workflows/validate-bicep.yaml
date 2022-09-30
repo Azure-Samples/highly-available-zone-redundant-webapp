@@ -1,0 +1,37 @@
+name: Validate Bicep Templates
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'bicep/**'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: 'AzureCloud'
+      
+      - name: az validate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: powershell
+        run: |
+          $rg = 'hazrwebapp-ghaction-validate-bicep'
+          az group create -n $rg -l westus3 
+          $properties = ( $az deployment group validate -g $rg -f ./bicep/main.bicep --parameters staticWebAppLocation=westus2 appServicePlanPremiumSku=PremiumV2 --query properties | ConvertFrom-Json )
+          
+          if ($properties -eq $null || $properties.provisioningState -ne 'Succeeded') {
+            $properties
+            $properties.error
+            throw "az deployment group validate failed. provisioningState = $($properties.provisioningState). error = $($properties.error)."
+          }
