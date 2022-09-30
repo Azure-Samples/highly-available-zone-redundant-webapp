@@ -48,7 +48,7 @@ cd highly-available-zone-redundant-webapp
 ### 2. Create a resource group
 
 ```
-az group create --name zr-ha-webapp-rg --location westus2
+az group create --name hazrwebapp-wus3-rg --location westus3
 ```
 
 ### 3. Create a deployment
@@ -56,7 +56,7 @@ az group create --name zr-ha-webapp-rg --location westus2
 Deploy the solution using the bicep template provided by creating a deployment.
 
 ```
-az deployment group create --resource-group zr-ha-webapp-rg --template-file ./bicep/main.bicep
+az deployment group create --resource-group hazrwebapp-wus3-rg --template-file ./bicep/main.bicep
 ```
 
 ## Bicep parameters
@@ -64,7 +64,7 @@ az deployment group create --resource-group zr-ha-webapp-rg --template-file ./bi
 `bicep/main.bicep` has several optional parameters that can be used to adjust deployment configuration. These can be passed inline with the `az deployment group create` command. For example:
 
 ```
-az deployment group create --resource-group zr-ha-webapp-rg --template-file ./bicep/main.bicep --parameters staticWebAppLocation=westus2
+az deployment group create --resource-group hazrwebapp-wus3-rg --template-file ./bicep/main.bicep --parameters staticWebAppLocation=westus2
 ```
 
 | param | Description | Default value |
@@ -97,7 +97,7 @@ Configure continuous deployment pipelines to deploy applications into Azure App 
 Delete the resource group to cleanup all resources:
 
 ```
-az group delete --name zr-ha-webapp-rg --no-wait
+az group delete --name hazrwebapp-wus3-rg --no-wait
 ```
 
 ## Azure Policies
