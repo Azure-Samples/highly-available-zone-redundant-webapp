@@ -52,18 +52,6 @@ param appGwPipDnsLabel string = '${applicationName}-appgw'
 
 
 // VARS
-var functionsPlan = '${applicationName}-functions-plan'
-var functionApp1 = '${applicationName}-func'
-var functionContentShareName = 'function-content-share'
-
-// Storage account name must be lowercase, alpha-numeric, and less the 24 chars in length
-var functionsStorage = take(toLower(replace('${applicationName}func', '-', '')), 24)
-
-var appServicePlan = '${applicationName}-plan'
-var app1 = '${applicationName}-app1'
-var app2 = '${applicationName}-app2'
-
-var vnet = '${applicationName}-vnet'
 
 // Static web app name
 var swa = '${applicationName}-swa'
@@ -93,6 +81,7 @@ var cogSearch = '${applicationName}-search'
 var cosmos = '${applicationName}-cosmos'
 
 var keyvault = '${applicationName}-kv'
+
 var redisConnectionStringSecretName = 'RedisConnectionString'
 var searchApiKeySecretName = 'SearchApiKey'
 var sqlConnectionStringSecretName = 'SqlConnectionString'
@@ -119,201 +108,6 @@ var searchEndpointUrl = {
   AzureChinaCloud: 'https://${cogSearch}.search.windows.net/' // Azure China Cloud does not have Search service
 }
 
-// Environment specific private link suffixes
-// reference: https://docs.microsoft.com/en-us/azure/private-link/private-endpoint-dns
-var privateLinkFunctionsDnsNames = {
-  AzureCloud: 'privatelink.azurewebsites.net'
-  AzureUSGovernment: 'privatelink.azurewebsites.us'
-  AzureChinaCloud: 'privatelink.chinacloudsites.cn'
-}
-
-var privateLinkRedisDnsNames = {
-  AzureCloud: 'privatelink.redis.cache.windows.net'
-  AzureUSGovernment: 'privatelink.redis.cache.usgovcloudapi.net'
-  AzureChinaCloud: 'privatelink.redis.cache.chinacloudapi.cn'
-}
-
-var privateLinkServiceBusDnsNames = {
-  AzureCloud: 'privatelink.servicebus.windows.net'
-  AzureUSGovernment: 'privatelink.servicebus.usgovcloudapi.net'
-  AzureChinaCloud: 'privatelink.servicebus.chinacloudapi.cn'
-}
-
-var privateLinkSearchDnsNames = {
-  AzureCloud: 'privatelink.search.windows.net'
-  AzureUSGovernment: 'privatelink.search.windows.us'
-  AzureChinaCloud: 'privatelink.search.windows.net' // Azure China Cloud does not have Search service
-}
-
-var privateLinkCosmosDnsNames = {
-  AzureCloud: 'privatelink.documents.azure.com'
-  AzureUSGovernment: 'privatelink.documents.azure.us'
-  AzureChinaCloud: 'privatelink.documents.azure.cn'
-}
-
-var privateLinkKeyVaultDnsNames = {
-  AzureCloud: 'privatelink.vaultcore.azure.net'
-  AzureUSGovernment: 'privatelink.vaultcore.usgovcloudapi.net'
-  AzureChinaCloud: 'privatelink.vaultcore.azure.cn'
-}
-
-var appServicePlanPremiumSkus = {
-  PremiumV2: {
-    name: 'P2v2'
-    tier: 'PremiumV2'
-    size: 'P2v2'
-    family: 'Pv2'
-    capacity: 3
-  }
-  PremiumV3: {
-    name: 'P1v3'
-    tier: 'PremiumV3'
-    size: 'P1v3'
-    family: 'Pv3'
-    capacity: 3
-  }
-}
-
-// VNET
-//  Subnet consts
-var WebappBackendSubnet = 0
-var FunctionsBackendSubnet = 1
-var FunctionsFrontEndSubnet = 2
-var StorageSubnet = 3
-var RedisSubnet = 4
-var ServiceBusSubnet = 5
-var SearchSubnet = 6
-var CosmosSubnet = 7
-var KeyVaultSubnet = 8
-var SqlServerSubnet = 9
-var AppGwSubnet = 10
-
-resource vnetResource 'Microsoft.Network/virtualNetworks@2022-01-01' = {
-  name: vnet
-  location: location
-  properties: {
-    addressSpace:{
-      addressPrefixes:[
-        '10.0.0.0/20'
-      ]
-    }
-    subnets:[
-      // [0] Web app vnet integration subnet
-      {
-        name: 'webapp-backend-subnet'
-        properties:{
-          addressPrefix: '10.0.0.0/26'
-          delegations: [
-            {
-              name: 'serverFarmDelegation'
-              properties: {
-                serviceName: 'Microsoft.Web/serverFarms'
-              }
-            }
-          ]  
-        }
-      }
-      // [1] Functions VNet integration subnet
-      {
-        name: 'functions-backend-subnet'
-        properties:{
-          addressPrefix: '10.0.0.64/26'          
-          delegations: [
-            {
-              name: 'serverFarmDelegation'
-              properties: {
-                serviceName: 'Microsoft.Web/serverFarms'
-              }
-            }
-          ]
-        }
-      }
-      // [2] Functions private endpoint subnet
-      {
-        name: 'functions-frontend-subnet'
-        properties:{
-          addressPrefix: '10.0.1.0/27'
-          privateEndpointNetworkPolicies: 'Disabled'
-          privateLinkServiceNetworkPolicies: 'Enabled'
-        }
-      }
-      // [3] Storage private endpoint subnet
-      {
-        name: 'storage-subnet'
-        properties:{
-          addressPrefix: '10.0.1.32/27'
-          privateEndpointNetworkPolicies: 'Disabled'
-          privateLinkServiceNetworkPolicies: 'Enabled'
-        }
-      }
-      // [4] Azure Cache for Redis private endpoint subnet
-      {
-        name: 'redis-subnet'
-        properties:{
-          addressPrefix: '10.0.1.64/27'
-          privateEndpointNetworkPolicies: 'Disabled'
-          privateLinkServiceNetworkPolicies: 'Enabled'
-        }
-      }
-      // [5] Service Bus private endpoint subnet
-      {
-        name: 'servicebus-subnet'
-        properties:{
-          addressPrefix: '10.0.1.96/27'
-          privateEndpointNetworkPolicies: 'Disabled'
-          privateLinkServiceNetworkPolicies: 'Enabled'  
-        }
-      }
-      // [6] Azure Search private endpoint subnet
-      {
-        name: 'search-subnet'
-        properties:{
-          addressPrefix: '10.0.1.128/27'
-          privateEndpointNetworkPolicies: 'Disabled'
-          privateLinkServiceNetworkPolicies: 'Enabled'
-        }
-      }
-      // [7] Cosmos DB private endpoint subnet
-      {
-        name: 'cosmos-subnet'
-        properties:{
-          addressPrefix: '10.0.1.160/27'
-          privateEndpointNetworkPolicies: 'Disabled'
-          privateLinkServiceNetworkPolicies: 'Enabled'
-        }
-      }
-      // [8] Key Vault private endpoint subnet
-      {
-        name: 'keyvault-subnet'
-        properties:{
-          addressPrefix: '10.0.1.192/27'
-          privateEndpointNetworkPolicies: 'Disabled'
-          privateLinkServiceNetworkPolicies: 'Enabled'
-        }
-      }
-      // [9] Azure SQL DB private endpoint subnet
-      {
-        name: 'sql-server-subnet'
-        properties:{
-          addressPrefix: '10.0.1.224/27'
-          privateEndpointNetworkPolicies: 'Disabled'
-          privateLinkServiceNetworkPolicies: 'Enabled'
-        }
-      }
-      // [10] Application Gateway subnet
-      {
-        name: 'appgw-subnet'
-        properties:{
-          addressPrefix: '10.0.2.0/24'
-          privateEndpointNetworkPolicies: 'Enabled'
-          privateLinkServiceNetworkPolicies: 'Enabled'
-        }
-      }
-    ]
-  }
-  tags: tags
-}
-
 
 // AZURE MONITOR - APPLICATION INSIGHTS
 resource workspaceResource 'Microsoft.OperationalInsights/workspaces@2021-06-01' = {
@@ -333,669 +127,171 @@ resource insightsResource 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
-
-// PRIVATE DNS ZONES
-resource privateSitesDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
-  name: privateLinkFunctionsDnsNames[environment().name]
-  location: 'global'
-  tags: tags
-  resource privateSitesDnsZoneVNetLink 'virtualNetworkLinks' = {
-    name: '${last(split(vnetResource.id, '/'))}-vnetlink'
-    location: 'global'
-    properties:{
-      registrationEnabled: false    // * Always false for Private Endpoint DNS Zone VNet links
-      virtualNetwork:{
-        id: vnetResource.id
-      }
-    }
-  }
-}
-
-resource privateBlobsDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
-  name: 'privatelink.blob.${environment().suffixes.storage}'
-  location: 'global'
-  tags: tags
-  resource privateSitesDnsZoneVNetLink 'virtualNetworkLinks' = {
-    name: '${last(split(vnetResource.id, '/'))}-vnetlink'
-    location: 'global'
-    properties:{
-      registrationEnabled: false
-      virtualNetwork:{
-        id: vnetResource.id
-      }
-    }
-  }
-}
-
-resource privateFilesDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
-  name: 'privatelink.file.${environment().suffixes.storage}'
-  location: 'global'
-  tags: tags
-  resource privateSitesDnsZoneVNetLink 'virtualNetworkLinks' = {
-    name: '${last(split(vnetResource.id, '/'))}-vnetlink'
-    location: 'global'
-    properties:{
-      registrationEnabled: false
-      virtualNetwork:{
-        id: vnetResource.id
-      }
-    }
-  }
-}
-
-resource privateTablesDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
-  name: 'privatelink.table.${environment().suffixes.storage}'
-  location: 'global'
-  tags: tags
-  resource privateSitesDnsZoneVNetLink 'virtualNetworkLinks' = {
-    name: '${last(split(vnetResource.id, '/'))}-vnetlink'
-    location: 'global'
-    properties:{
-      registrationEnabled: false
-      virtualNetwork:{
-        id: vnetResource.id
-      }
-    }
-  }
-}
-
-resource privateQueuesDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
-  name: 'privatelink.queue.${environment().suffixes.storage}'
-  location: 'global'
-  tags: tags
-  resource privateSitesDnsZoneVNetLink 'virtualNetworkLinks' = {
-    name: '${last(split(vnetResource.id, '/'))}-vnetlink'
-    location: 'global'
-    properties:{
-      registrationEnabled: false
-      virtualNetwork:{
-        id: vnetResource.id
-      }
-    }
-  }
-}
-
-resource privateRedisDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
-  name: privateLinkRedisDnsNames[environment().name]
-  location: 'global'
-  tags: tags
-  resource privateSitesDnsZoneVNetLink 'virtualNetworkLinks' = {
-    name: '${last(split(vnetResource.id, '/'))}-vnetlink'
-    location: 'global'
-    properties:{
-      registrationEnabled: false
-      virtualNetwork:{
-        id: vnetResource.id
-      }
-    }
-  }
-}
-
-resource privateServicebusDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
-  name: privateLinkServiceBusDnsNames[environment().name]
-  location: 'global'
-  tags: tags
-  resource privateSitesDnsZoneVNetLink 'virtualNetworkLinks' = {
-    name: '${last(split(vnetResource.id, '/'))}-vnetlink'
-    location: 'global'
-    properties:{
-      registrationEnabled: false
-      virtualNetwork:{
-        id: vnetResource.id
-      }
-    }
-  }
-}
-
-resource privateCogSearchDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
-  name: privateLinkSearchDnsNames[environment().name]
-  location: 'global'
-  tags: tags
-  resource privateSitesDnsZoneVNetLink 'virtualNetworkLinks' = {
-    name: '${last(split(vnetResource.id, '/'))}-vnetlink'
-    location: 'global'
-    properties:{
-      registrationEnabled: false
-      virtualNetwork:{
-        id: vnetResource.id
-      }
-    }
-  }
-}
-
-resource privateCosmosDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
-  name: privateLinkCosmosDnsNames[environment().name]
-  location: 'global'
-  tags: tags
-  resource privateSitesDnsZoneVNetLink 'virtualNetworkLinks' = {
-    name: '${last(split(vnetResource.id, '/'))}-vnetlink'
-    location: 'global'
-    properties:{
-      registrationEnabled: false
-      virtualNetwork:{
-        id: vnetResource.id
-      }
-    }
-  }
-}
-
-resource privateKeyvaultDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
-  name: privateLinkKeyVaultDnsNames[environment().name]
-  location: 'global'
-  tags: tags
-  resource privateSitesDnsZoneVNetLink 'virtualNetworkLinks' = {
-    name: '${last(split(vnetResource.id, '/'))}-vnetlink'
-    location: 'global'
-    properties:{
-      registrationEnabled: false
-      virtualNetwork:{
-        id: vnetResource.id
-      }
-    }
-  }
-}
-
-resource privateSqlDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
-  name: 'privatelink${environment().suffixes.sqlServerHostname}'
-  location: 'global'
-  tags: tags
-  resource privateSitesDnsZoneVNetLink 'virtualNetworkLinks' = {
-    name: '${last(split(vnetResource.id, '/'))}-vnetlink'
-    location: 'global'
-    properties:{
-      registrationEnabled: false
-      virtualNetwork:{
-        id: vnetResource.id
-      }
-    }
+// NETWORK
+module networkModule 'modules/network.bicep' = {
+  name: 'network'
+  params: {
+    applicationName: applicationName
+    location: location
+    tags: tags
   }
 }
 
 // PRIVATE ENDPOINTS
-
-//  Each Private endpoint (PEP) is comprised of: 
-//    1. Private endpoint resource, 
-//    2. Private link service connection to the target resource, 
-//    3. Private DNS zone group, linked to a VNet-linked private DNS Zone
-
-resource functionApp1PepResource 'Microsoft.Network/privateEndpoints@2022-01-01' = {
-  name: '${functionApp1}-pep'
-  location: location
-  tags: tags
-  properties: {
-    subnet: {
-      id: vnetResource.properties.subnets[FunctionsFrontEndSubnet].id
-    }
-    privateLinkServiceConnections: [
-      {
-        name: 'peplink'
-        properties: {
-          privateLinkServiceId: functionApp1Resource.id
-          groupIds: [
-            'sites'
-          ]
-        }
-      }
-    ]
-  }
-  resource privateDnsZoneGroup 'privateDnsZoneGroups' = {
-    name: 'dnszonegroup'
-    properties: {
-      privateDnsZoneConfigs: [
-        {
-          name: 'config'    // must be 'config'
-          properties: {
-            privateDnsZoneId: privateSitesDnsZone.id
-          }
-        }
-      ]
-    }
+module functionApp1PepModule 'modules/pep.bicep' = {
+  name: 'functionApp1PepModule'
+  params: {
+    resourceName: functionsModule.outputs.functionAppName
+    resourceId: functionsModule.outputs.functionAppResourceId
+    location: location
+    tags: tags
+    groupId: 'sites'
+    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.functionApp1
+    subnetId: networkModule.outputs.subnetIds.appGateway
   }
 }
 
-resource blobStoragePepResource 'Microsoft.Network/privateEndpoints@2022-01-01' = {
-  name: '${functionsStorage}-blob-pep'
-  location: location
-  tags: tags
-  properties: {
-    subnet: {
-      id: vnetResource.properties.subnets[StorageSubnet].id
-    }
-    privateLinkServiceConnections: [
-      {
-        name: 'peplink'
-        properties: {
-          privateLinkServiceId: storageResource.id
-          groupIds: [
-            'blob'
-          ]
-        }
-      }
-    ]
-  }
-  resource privateDnsZoneGroup 'privateDnsZoneGroups' = {
-    name: 'dnszonegroup'
-    properties: {
-      privateDnsZoneConfigs: [
-        {
-          name: 'config'
-          properties: {
-            privateDnsZoneId: privateBlobsDnsZone.id
-          }
-        }
-      ]
-    }
+module blobStoragePepModule 'modules/pep.bicep' = {
+  name: 'blobStoragePepModule'
+  params: {
+    resourceName: functionsModule.outputs.functionsStorageName
+    resourceId: functionsModule.outputs.functionsStorageResourceId
+    location: location
+    tags: tags
+    groupId: 'blob'
+    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.blob
+    subnetId: networkModule.outputs.subnetIds.storage
   }
 }
 
-resource tableStoragePepResource 'Microsoft.Network/privateEndpoints@2022-01-01' = {
-  name: '${functionsStorage}-table-pep'
-  location: location
-  tags: tags
-  properties: {
-    subnet: {
-      id: vnetResource.properties.subnets[StorageSubnet].id
-    }
-    privateLinkServiceConnections: [
-      {
-        name: 'peplink'
-        properties: {
-          privateLinkServiceId: storageResource.id
-          groupIds: [
-            'table'
-          ]
-        }
-      }
-    ]
-  }
-  resource privateDnsZoneGroup 'privateDnsZoneGroups' = {
-    name: 'dnszonegroup'
-    properties: {
-      privateDnsZoneConfigs: [
-        {
-          name: 'config'
-          properties: {
-            privateDnsZoneId: privateTablesDnsZone.id
-          }
-        }
-      ]
-    }
+module tableStoragePepModule 'modules/pep.bicep' = {
+  name: 'tableStoragePepModule'
+  params: {
+    resourceName: functionsModule.outputs.functionsStorageName
+    resourceId: functionsModule.outputs.functionsStorageResourceId
+    location: location
+    tags: tags
+    groupId: 'table'
+    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.table
+    subnetId: networkModule.outputs.subnetIds.storage
   }
 }
 
-resource queueStoragePepResource 'Microsoft.Network/privateEndpoints@2022-01-01' = {
-  name: '${functionsStorage}-queue-pep'
-  location: location
-  tags: tags
-  properties: {
-    subnet: {
-      id: vnetResource.properties.subnets[StorageSubnet].id
-    }
-    privateLinkServiceConnections: [
-      {
-        name: 'peplink'
-        properties: {
-          privateLinkServiceId: storageResource.id
-          groupIds: [
-            'queue'
-          ]
-        }
-      }
-    ]
-  }
-  resource privateDnsZoneGroup 'privateDnsZoneGroups' = {
-    name: 'dnszonegroup'
-    properties: {
-      privateDnsZoneConfigs: [
-        {
-          name: 'config'
-          properties: {
-            privateDnsZoneId: privateQueuesDnsZone.id
-          }
-        }
-      ]
-    }
+module queueStoragePepModule 'modules/pep.bicep' = {
+  name: 'queueStoragePepModule'
+  params: {
+    resourceName: functionsModule.outputs.functionsStorageName
+    resourceId: functionsModule.outputs.functionsStorageResourceId
+    location: location
+    tags: tags
+    groupId: 'queue'
+    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.queue
+    subnetId: networkModule.outputs.subnetIds.storage
   }
 }
 
-resource fileStoragePepResource 'Microsoft.Network/privateEndpoints@2022-01-01' = {
-  name: '${functionsStorage}-file-pep'
-  location: location
-  tags: tags
-  properties: {
-    subnet: {
-      id: vnetResource.properties.subnets[StorageSubnet].id
-    }
-    privateLinkServiceConnections: [
-      {
-        name: 'peplink'
-        properties: {
-          privateLinkServiceId: storageResource.id
-          groupIds: [
-            'file'
-          ]
-        }
-      }
-    ]
-  }
-  resource privateDnsZoneGroup 'privateDnsZoneGroups' = {
-    name: 'dnszonegroup'
-    properties: {
-      privateDnsZoneConfigs: [
-        {
-          name: 'config'
-          properties: {
-            privateDnsZoneId: privateFilesDnsZone.id
-          }
-        }
-      ]
-    }
+module fileStoragePepModule 'modules/pep.bicep' = {
+  name: 'fileStoragePepModule'
+  params: {
+    resourceName: functionsModule.outputs.functionsStorageName
+    resourceId: functionsModule.outputs.functionsStorageResourceId
+    location: location
+    tags: tags
+    groupId: 'file'
+    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.files
+    subnetId: networkModule.outputs.subnetIds.storage
   }
 }
 
-resource redisPepResource 'Microsoft.Network/privateEndpoints@2022-01-01' = {
-  name: '${redis}-pep'
-  location: location
-  tags: tags
-  properties: {
-    subnet: {
-      id: vnetResource.properties.subnets[RedisSubnet].id
-    }
-    privateLinkServiceConnections: [
-      {
-        name: 'peplink'
-        properties: {
-          privateLinkServiceId: redisResource.id
-          groupIds: [
-            'redisCache'
-          ]
-        }
-      }
-    ]
-  }
-  resource privateDnsZoneGroups 'privateDnsZoneGroups' = {
-    name: 'dnszonegroup'
-    properties: {
-      privateDnsZoneConfigs: [
-        {
-          name: 'config'
-          properties: {
-            privateDnsZoneId: privateRedisDnsZone.id
-          }
-        }
-      ]
-    }
+module redisPepModule 'modules/pep.bicep' = {
+  name: 'redisStoragePepModule'
+  params: {
+    resourceName: redisResource.name
+    resourceId: redisResource.id
+    location: location
+    tags: tags
+    groupId: 'redisCache'
+    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.redis
+    subnetId: networkModule.outputs.subnetIds.redis
   }
 }
 
-resource servicebusPepResource 'Microsoft.Network/privateEndpoints@2022-01-01' = {
-  name: '${servicebus}-pep'
-  location: location
-  tags: tags
-  properties: {
-    subnet: {
-      id: vnetResource.properties.subnets[ServiceBusSubnet].id
-    }
-    privateLinkServiceConnections: [
-      {
-        name: 'peplink'
-        properties: {
-          privateLinkServiceId: servicebusResource.id
-          groupIds: [
-            'namespace'
-          ]
-        }
-      }
-    ]
-  }
-  resource privateDnsZoneGroups 'privateDnsZoneGroups' = {
-    name: 'dnszonegroup'
-    properties: {
-      privateDnsZoneConfigs: [
-        {
-          name: 'config'
-          properties: {
-            privateDnsZoneId: privateServicebusDnsZone.id
-          }
-        }
-      ]
-    }
+module servicebusPepModule 'modules/pep.bicep' = {
+  name: 'servicebusStoragePepModule'
+  params: {
+    resourceName: servicebusResource.name
+    resourceId: servicebusResource.id
+    location: location
+    tags: tags
+    groupId: 'namespace'
+    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.servicebus
+    subnetId: networkModule.outputs.subnetIds.servicebus
   }
 }
 
-resource searchPepResource 'Microsoft.Network/privateEndpoints@2022-01-01' = {
-  name: '${cogSearch}-pep'
-  location: location
-  tags: tags
-  properties: {
-    subnet: {
-      id: vnetResource.properties.subnets[SearchSubnet].id
-    }
-    privateLinkServiceConnections: [
-      {
-        name: 'peplink'
-        properties: {
-          privateLinkServiceId: cogSearchResource.id
-          groupIds: [
-            'searchService'
-          ]
-        }
-      }
-    ]
-  }
-  resource privateDnsZoneGroups 'privateDnsZoneGroups' = {
-    name: 'dnszonegroup'
-    properties: {
-      privateDnsZoneConfigs: [
-        {
-          name: 'config'
-          properties: {
-            privateDnsZoneId: privateCogSearchDnsZone.id
-          }
-        }
-      ]
-    }
+module searchPepModule 'modules/pep.bicep' = {
+  name: 'searchPepModule'
+  params: {
+    resourceName: cogSearchResource.name
+    resourceId: cogSearchResource.id
+    location: location
+    tags: tags
+    groupId: 'searchService'
+    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.cogSearch
+    subnetId: networkModule.outputs.subnetIds.cogSearch
   }
 }
 
-resource cosmosPepResource 'Microsoft.Network/privateEndpoints@2022-01-01' = {
-  name: '${cosmos}-pep'
-  location: location
-  tags: tags
-  properties: {
-    subnet: {
-      id: vnetResource.properties.subnets[CosmosSubnet].id
-    }
-    privateLinkServiceConnections: [
-      {
-        name: 'peplink'
-        properties: {
-          privateLinkServiceId: cosmosResource.id
-          groupIds: [
-            'sql'
-          ]
-        }
-      }
-    ]
-  }
-  resource privateDnsZoneGroups 'privateDnsZoneGroups' = {
-    name: 'dnszonegroup'
-    properties: {
-      privateDnsZoneConfigs: [
-        {
-          name: 'config'
-          properties: {
-            privateDnsZoneId: privateCosmosDnsZone.id
-          }
-        }
-      ]
-    }
+module cosmosPepModule 'modules/pep.bicep' = {
+  name: 'cosmosPepModule'
+  params: {
+    resourceName: cosmosResource.name
+    resourceId: cosmosResource.id
+    location: location
+    tags: tags
+    groupId: 'sql'
+    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.cosmos
+    subnetId: networkModule.outputs.subnetIds.cosmos
   }
 }
 
-resource sqlPepResource 'Microsoft.Network/privateEndpoints@2022-01-01' = {
-  name: '${sql}-pep'
-  location: location
-  tags: tags
-  properties: {
-    subnet: {
-      id: vnetResource.properties.subnets[SqlServerSubnet].id
-    }
-    privateLinkServiceConnections: [
-      {
-        name: 'peplink'
-        properties: {
-          privateLinkServiceId: sqlResource.id
-          groupIds: [
-            'sqlServer'
-          ]
-        }
-      }
-    ]
-  }
-  resource privateDnsZoneGroups 'privateDnsZoneGroups' = {
-    name: 'dnszonegroup'
-    properties: {
-      privateDnsZoneConfigs: [
-        {
-          name: 'config'
-          properties: {
-            privateDnsZoneId: privateSqlDnsZone.id
-          }
-        }
-      ]
-    }
+module sqlPepModule 'modules/pep.bicep' = {
+  name: 'sqlPepModule'
+  params: {
+    resourceName: sqlResource.name
+    resourceId: sqlResource.id
+    location: location
+    tags: tags
+    groupId: 'sqlServer'
+    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.sqlServer
+    subnetId: networkModule.outputs.subnetIds.sqlServer
   }
 }
 
-resource keyvaultPepResource 'Microsoft.Network/privateEndpoints@2022-01-01' = {
-  name: '${keyvault}-pep'
-  location: location
-  tags: tags
-  properties: {
-    subnet: {
-      id: vnetResource.properties.subnets[KeyVaultSubnet].id
-    }
-    privateLinkServiceConnections: [
-      {
-        name: 'peplink'
-        properties: {
-          privateLinkServiceId: keyvaultResource.id
-          groupIds: [
-            'vault'
-          ]
-        }
-      }
-    ]
-  }
-  resource privateDnsZoneGroup 'privateDnsZoneGroups' = {
-    name: 'dnszonegroup'
-    properties: {
-      privateDnsZoneConfigs: [
-        {
-          name: 'config'
-          properties: {
-            privateDnsZoneId: privateKeyvaultDnsZone.id
-          }
-        }
-      ]
-    }
+module keyvaultPepModule 'modules/pep.bicep' = {
+  name: 'keyvaultPepModule'
+  params: {
+    resourceName: keyvaultResource.name
+    resourceId: keyvaultResource.id
+    location: location
+    tags: tags
+    groupId: 'vault'
+    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.keyvault
+    subnetId: networkModule.outputs.subnetIds.keyvault
   }
 }
 
-
-// STORAGE ACCOUNT
-resource storageResource 'Microsoft.Storage/storageAccounts@2022-05-01' = {
-  name: functionsStorage
-  kind: 'StorageV2'
-  location: location
-  tags: tags
-  sku: {
-    name: 'Standard_ZRS'
-  }
-  properties:{
-    allowBlobPublicAccess: false
-    publicNetworkAccess: 'Disabled'
-    accessTier: 'Hot'
-  }
-  // When deploying a Function App with Bicep, a content fileshare must be explicitly created or Function App will not start.
-  resource functionContentShare 'fileServices' = {
-    name: 'default'
-    resource share 'shares@2022-05-01' = {
-      name: functionContentShareName
-    }
-  }
-}
-
-
-// PREMIUM FUNCTIONS PLAN
-resource functionsPlanResource 'Microsoft.Web/serverfarms@2022-03-01' = {
-  name: functionsPlan
-  location: location
-  tags: tags
-  kind: 'elastic'
-  sku: {
-    name: 'EP2'
-    tier: 'ElasticPremium'
-    size: 'EP2'
-    family: 'EP'
-    capacity: 3   // Minimum 3 instances required for zone-redundancy
-  }
-  properties: {
-    maximumElasticWorkerCount: 10
-    zoneRedundant: true  
-  }
-}
-
-// APP SERVICE PLAN
-resource appservicePlanResource 'Microsoft.Web/serverfarms@2022-03-01' = {
-  name: appServicePlan
-  location: location
-  tags: tags
-  kind: 'linux'
-  sku: appServicePlanPremiumSkus[appServicePlanPremiumSku]
-  properties: {
-    reserved: true          // linux
-    zoneRedundant: true
-    targetWorkerCount: 3    // Minimum 3 instances required for zone-redundancy
-  }
-}
-
-// WEB APPS
-resource webApp1Resource 'Microsoft.Web/sites@2022-03-01' = {
-  name: app1
-  location: location
-  tags: tags
-  kind: 'app'
-  identity: {
-    type: 'SystemAssigned'
-  }
-  properties: {
-    httpsOnly: true
-    serverFarmId: appservicePlanResource.id
-    virtualNetworkSubnetId: vnetResource.properties.subnets[WebappBackendSubnet].id
-    clientAffinityEnabled: false
-    siteConfig: {
-      alwaysOn: true
-      vnetRouteAllEnabled: true
-      linuxFxVersion: 'dotnet|6.0'
-    }
-  }
-  resource config 'config' = {
-    name: 'web'
-    properties: {
-      ftpsState: 'Disabled'
-      minTlsVersion: '1.2'
-    }
-  }
-}
-
-// App settings deployed on 'existing' resource to avoid circular reference webapp <=> key vault.
-resource webapp1Existing 'Microsoft.Web/sites@2022-03-01' existing = {
-  name: app1
-  resource webapp1ExistingConfig 'config@2020-12-01' = {
-    name: 'appsettings'
-    properties: {
+// APP SERVICES
+module appServicesModule 'modules/appServices.bicep' = {
+  name: 'appServicesModule'
+  params: {
+    applicationName: applicationName
+    location: location
+    tags: tags
+    vnetSubnetId: networkModule.outputs.subnetIds.appServices
+    appServicePlanPremiumSku: appServicePlanPremiumSku
+    developmentEnvironment: developmentEnvironment
+    appSettings: {
       APPINSIGHTS_INSTRUMENTATIONKEY: insightsResource.properties.InstrumentationKey
       AZURE_SERVICE_BUS_FQ_NAMESPACE: replace(replace(servicebusResource.properties.serviceBusEndpoint, 'https://', ''), ':443/', '')
       AZURE_SERVICE_BUS_QUEUE_NAME: servicebusQueueName
@@ -1005,101 +301,24 @@ resource webapp1Existing 'Microsoft.Web/sites@2022-03-01' existing = {
       AZURE_SEARCH_ENDPOINT_URI: searchEndpointUrl[environment().name]
       AZURE_SEARCH_API_KEY: '@Microsoft.KeyVault(SecretUri=${keyvaultResource.properties.vaultUri}secrets/${searchApiKeySecretName}/)'
     }
-    dependsOn:[
-      webApp1Resource
-    ]
   }
 }
 
-resource webApp2Resource 'Microsoft.Web/sites@2022-03-01' = {
-  name: app2
-  location: location
-  tags: tags
-  kind: 'app'
-  identity: {
-    type: 'SystemAssigned'
-  }
-  properties: {
-    httpsOnly: true
-    serverFarmId: appservicePlanResource.id
-    virtualNetworkSubnetId: vnetResource.properties.subnets[WebappBackendSubnet].id
-    clientAffinityEnabled: false
-    siteConfig: {
-      alwaysOn: true
-      vnetRouteAllEnabled: true
-      linuxFxVersion: 'dotnet|6.0'
-    }
-  }
-  resource config 'config' = {
-    name: 'web'
-    properties: {
-      ftpsState: 'Disabled'
-      minTlsVersion: '1.2'
-    }
-  }
-}
 
-resource webapp2Existing 'Microsoft.Web/sites@2022-03-01' existing = {
-  name: app2
-  resource webapp2ExistingConfig 'config@2020-12-01' = {
-    name: 'appsettings'
-    properties: {
+// FUNCTIONS 
+module functionsModule 'modules/functions.bicep' = {
+  name: 'functionsModule'
+  params: {
+    applicationName: applicationName
+    location: location
+    tags: tags
+    vnetSubnetId: networkModule.outputs.subnetIds.functionsFrontend
+    appSettings: {
       APPINSIGHTS_INSTRUMENTATIONKEY: insightsResource.properties.InstrumentationKey
-    }
-    dependsOn:[
-      webApp2Resource
-    ]
-  }
-}
-
-
-// FUNCTION APPS
-resource functionApp1Resource 'Microsoft.Web/sites@2022-03-01' = {
-  name: functionApp1
-  location: location
-  tags: tags
-  kind: 'functionapp'
-  identity: {
-    type: 'SystemAssigned'
-  }
-  properties: {
-    httpsOnly: true
-    serverFarmId: functionsPlanResource.id
-    virtualNetworkSubnetId: vnetResource.properties.subnets[FunctionsBackendSubnet].id
-    siteConfig: {
-      vnetRouteAllEnabled: true
-      windowsFxVersion: 'dotnet|6.0'
-    }
-  }
-  resource config 'config' = {
-    name: 'web'
-    properties: {
-      ftpsState: 'Disabled'
-      minTlsVersion: '1.2'
-    }
-  }
-}
-
-// App settings deployed on 'existing' resource to avoid circular reference function app <=> key vault.
-resource functionApp1Existing 'Microsoft.Web/sites@2022-03-01' existing = {
-  name: functionApp1
-  resource functionApp1ExistingConfig 'config@2020-12-01' = {
-    name: 'appsettings'
-    properties: {
-      APPINSIGHTS_INSTRUMENTATIONKEY: insightsResource.properties.InstrumentationKey
-      AzureWebJobsStorage: 'DefaultEndpointsProtocol=https;AccountName=${storageResource.name};AccountKey=${storageResource.listKeys().keys[0].value}'
-      WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: 'DefaultEndpointsProtocol=https;AccountName=${storageResource.name};AccountKey=${storageResource.listKeys().keys[0].value}'
-      FUNCTIONS_EXTENSION_VERSION: '~4'
-      FUNCTIONS_WORKER_RUNTIME: 'dotnet-isolated'
-      WEBSITE_CONTENTOVERVNET: '1'
-      WEBSITE_CONTENTSHARE: functionContentShareName
       SQL_SERVER_CONNECTION_STRING: '@Microsoft.KeyVault(SecretUri=${keyvaultResource.properties.vaultUri}secrets/${sqlConnectionStringSecretName}/)'
       AZURE_SERVICE_BUS_FQ_NAMESPACE: replace(replace(servicebusResource.properties.serviceBusEndpoint, 'https://', ''), ':443/', '')
       AZURE_SERVICE_BUS_QUEUE_NAME: servicebusQueueName
     }
-    dependsOn:[
-      functionApp1Resource
-    ]
   }
 }
 
@@ -1118,6 +337,7 @@ resource staticWebAppResource 'Microsoft.Web/staticSites@2022-03-01' = {
     branch: 'main'
   }
 }
+
 
 // APP GW
 resource pipResource 'Microsoft.Network/publicIPAddresses@2022-05-01' = {
@@ -1163,7 +383,7 @@ resource appGWResource 'Microsoft.Network/applicationGateways@2022-05-01' = {
         name: 'appGatewayIpConfig'
         properties: {
           subnet: {
-            id: vnetResource.properties.subnets[AppGwSubnet].id
+            id: networkModule.outputs.subnetIds.appGateway
           }
         }
       }
@@ -1199,7 +419,7 @@ resource appGWResource 'Microsoft.Network/applicationGateways@2022-05-01' = {
         properties: {
           backendAddresses:[
             {
-              fqdn: webApp1Resource.properties.defaultHostName
+              fqdn: appServicesModule.outputs.webapp1Hostname
             }
           ]
         }
@@ -1209,7 +429,7 @@ resource appGWResource 'Microsoft.Network/applicationGateways@2022-05-01' = {
         properties: {
           backendAddresses:[
             {
-              fqdn: webApp2Resource.properties.defaultHostName
+              fqdn: appServicesModule.outputs.webapp2Hostname
             }
           ]
         }
@@ -1409,8 +629,8 @@ resource redisResource 'Microsoft.Cache/redis@2022-05-01' = {
     }
     minimumTlsVersion: '1.2'
     publicNetworkAccess: 'Disabled'
-    replicasPerMaster: 2
-    replicasPerPrimary: 2
+    replicasPerMaster: developmentEnvironment ? 2 : 0
+    replicasPerPrimary: developmentEnvironment ? 2 : 0
   }
 }
 
@@ -1443,7 +663,7 @@ resource cogSearchResource 'Microsoft.Search/searchServices@2020-08-01' = {
     name: 'standard'
   }
   properties: {
-    replicaCount: 3
+    replicaCount: developmentEnvironment ? 3 : 1
     publicNetworkAccess: 'disabled'
   }
 }
@@ -1509,28 +729,6 @@ resource keyvaultResource 'Microsoft.KeyVault/vaults@2022-07-01' = {
     }
     tenantId: tenant().tenantId
     publicNetworkAccess: 'disabled'
-    accessPolicies: [
-      {
-        objectId: webApp1Resource.identity.principalId
-        tenantId: webApp1Resource.identity.tenantId
-        permissions: {
-          secrets: [
-            'list'
-            'get'
-          ]
-        }
-      }
-      {
-        objectId: functionApp1Resource.identity.principalId
-        tenantId: functionApp1Resource.identity.tenantId
-        permissions: {
-          secrets: [
-            'list'
-            'get'
-          ]
-        }
-      }
-    ]
   }
   resource redisSecretResource 'secrets@2022-07-01' = {
     name: redisConnectionStringSecretName
@@ -1552,6 +750,34 @@ resource keyvaultResource 'Microsoft.KeyVault/vaults@2022-07-01' = {
   }
 }
 
+resource keyVaultPolicies 'Microsoft.KeyVault/vaults/accessPolicies@2022-11-01' = {
+  parent: keyvaultResource
+  name: 'add'
+  properties: {
+    accessPolicies: [
+      {
+        objectId: appServicesModule.outputs.webapp1Identity.principalId
+        tenantId: appServicesModule.outputs.webapp1Identity.tenantId
+        permissions: {
+          secrets: [
+            'list'
+            'get'
+          ]
+        }
+      }
+      {
+        objectId: functionsModule.outputs.functionAppIdentity.principalId
+        tenantId: functionsModule.outputs.functionAppIdentity.tenantId
+        permissions: {
+          secrets: [
+            'list'
+            'get'
+          ]
+        }
+      }
+    ]
+  }
+}
 
 // SQL
 resource sqlResource 'Microsoft.Sql/servers@2021-11-01' = {
@@ -1579,72 +805,54 @@ resource sqlResource 'Microsoft.Sql/servers@2021-11-01' = {
 
 
 // ROLE ASSIGNMENTS
-
-// Assigns Function App 1 data role to Storage Account
-resource functionApp1RoleAssignmentStorageAccount 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  // * Name of a role assignment must be a GUID and must be unique within the Subscription.
-  name: guid(storageResource.id, functionApp1Resource.id, roleDefinitionIds.storage)
-  scope: storageResource
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionIds.storage)
-    principalId: functionApp1Resource.identity.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
 // Assigns Function App 1 data role to Service Bus
 resource functionApp1RoleAssignmentServiceBus 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(servicebusResource.id, functionApp1Resource.id, roleDefinitionIds.servicebus)
+  name: guid(servicebusResource.id, functionsModule.name, '1', roleDefinitionIds.servicebus)
   scope: servicebusResource
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionIds.servicebus)
-    principalId: functionApp1Resource.identity.principalId
+    principalId: functionsModule.outputs.functionAppIdentity.principalId
     principalType: 'ServicePrincipal'
   }
 }
 
 // Assigns Web App data role to Service Bus
 resource webApp1RoleAssignmentServiceBus 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(servicebusResource.id, webApp1Resource.id, roleDefinitionIds.servicebus)
+  name: guid(servicebusResource.id, appServicesModule.name, '1', roleDefinitionIds.servicebus)
   scope: servicebusResource
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionIds.servicebus)
-    principalId: webApp1Resource.identity.principalId
+    principalId: appServicesModule.outputs.webapp1Identity.principalId
     principalType: 'ServicePrincipal'
   }
 }
 
 // Assigns Web App reader role to Key Vault
 resource webAppRoleAssignmentKeyVault 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyvaultResource.id, webApp1Resource.id, roleDefinitionIds.keyvault)
+  name: guid(keyvaultResource.id, appServicesModule.name, '1', roleDefinitionIds.keyvault)
   scope: keyvaultResource
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionIds.keyvault)
-    principalId: webApp1Resource.identity.principalId
+    principalId: appServicesModule.outputs.webapp1Identity.principalId
     principalType: 'ServicePrincipal'
   }
 }
 
 // Cosmos Data plane RBAC role assignment
 resource webAppRoleAssignmentCosmosDbSql 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2022-05-15' = {
-  name: '${cosmos}/${guid(roleDefinitionIds.cosmosdbDataReader, webApp1Resource.id, cosmosResource.id)}'
+  parent: cosmosResource
+  name: guid(roleDefinitionIds.cosmosdbDataReader, appServicesModule.name, '1', cosmosResource.id)
   properties: {
     roleDefinitionId: '${cosmosResource.id}/sqlRoleDefinitions/${roleDefinitionIds.cosmosdbDataReader}'
-    principalId: webApp1Resource.identity.principalId
+    principalId: appServicesModule.outputs.webapp1Identity.principalId
     scope: cosmosResource.id
   }
 }
+
 
 // Outputs
 output appGwHostname string = pipResource.properties.dnsSettings.fqdn
 output applicationName string = applicationName
 output environmentOutput object = environment()
-output functionAppPlanName string = functionsPlan
-output functionAppHostname string = functionApp1Resource.properties.defaultHostName
-output functionAppName string = functionApp1
 output insightsInstrumentationKey string = insightsResource.properties.InstrumentationKey
 output staticWebAppHostname string = staticWebAppResource.properties.defaultHostname
-output webappPlanName string = appServicePlan
-output webapp1Name string = app1
-output webapp2Name string = app2
-output webappHostname string = webApp1Resource.properties.defaultHostName
