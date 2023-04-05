@@ -60,13 +60,15 @@ var swa = '${applicationName}-swa'
 var appGw = '${applicationName}-appgw'
 var appGwBackendRequestTimeout = 31   // seconds
 var appGwPublicFrontendIp = 'appGwPublicFrontendIp'
-var publicHttpListener = 'publicHttpListener'
+var publicHttpListenerApp1 = 'publicHttpListenerApp1'
+var publicHttpListenerApp2 = 'publicHttpListenerApp2'
 var publicHttpsListenerApp1 = 'publicHttpsListenerApp1'
 var publicHttpsListenerApp2 = 'publicHttpsListenerApp2'
 var app1BackendPool = 'app1BackendPool'
 var app2BackendPool = 'app2BackendPool'
 var backendHttpSettings = 'backendHttpSettings'
-var httpRedirectConfiguration = 'httpRedirectConfiguration'
+var web1RedirectConfiguration = 'web1RedirectConfiguration'
+var web2RedirectConfiguration = 'web2RedirectConfiguration'
 var appGwWafPolicy = '${applicationName}-appgw-waf'
 var appGwPip = '${applicationName}-appgw-pip'
 var appGwPublicSslCert = 'apimPublicSslCert'
@@ -459,7 +461,7 @@ resource appGWResource 'Microsoft.Network/applicationGateways@2022-05-01' = {
     ]
     httpListeners: [
       {
-        name: publicHttpListener
+        name: publicHttpListenerApp1
         properties: {
           firewallPolicy: {
             id: appGwWafPolicyResource.id
@@ -472,6 +474,24 @@ resource appGWResource 'Microsoft.Network/applicationGateways@2022-05-01' = {
           }
           protocol: 'Http'
           requireServerNameIndication: false
+          hostNames: [web1Hostname]
+        }
+      }
+      {
+        name: publicHttpListenerApp2
+        properties: {
+          firewallPolicy: {
+            id: appGwWafPolicyResource.id
+          }
+          frontendIPConfiguration: {
+            id: resourceId('Microsoft.Network/applicationGateways/frontendIPConfigurations', appGw, appGwPublicFrontendIp)
+          }
+          frontendPort: {
+            id: resourceId('Microsoft.Network/applicationGateways/frontendPorts', appGw, 'port_80')
+          }
+          protocol: 'Http'
+          requireServerNameIndication: false
+          hostNames: [web2Hostname]
         }
       }
       {
@@ -516,7 +536,7 @@ resource appGWResource 'Microsoft.Network/applicationGateways@2022-05-01' = {
     redirectConfigurations:[
       {
         // Redirect HTTP => HTTPS
-        name: httpRedirectConfiguration
+        name: web1RedirectConfiguration
         properties:{
           includePath: true
           includeQueryString: true
@@ -526,18 +546,43 @@ resource appGWResource 'Microsoft.Network/applicationGateways@2022-05-01' = {
           }
         }
       }
+      {
+        // Redirect HTTP => HTTPS
+        name: web2RedirectConfiguration
+        properties:{
+          includePath: true
+          includeQueryString: true
+          redirectType: 'Permanent'
+          targetListener: {
+            id: resourceId('Microsoft.Network/applicationGateways/httpListeners', appGw, publicHttpsListenerApp2)
+          }
+        }
+      }
     ]
     requestRoutingRules: [
       {
-        name: 'httpRedirectRoutingRule'
+        name: 'web1RedirectRoutingRule'
         properties: {
           ruleType: 'Basic'
           priority: 10
           httpListener: {
-            id: resourceId('Microsoft.Network/applicationGateways/httpListeners', appGw, publicHttpListener)
+            id: resourceId('Microsoft.Network/applicationGateways/httpListeners', appGw, publicHttpListenerApp1)
           }
           redirectConfiguration:{
-            id: resourceId('Microsoft.Network/applicationGateways/redirectConfigurations', appGw, httpRedirectConfiguration)
+            id: resourceId('Microsoft.Network/applicationGateways/redirectConfigurations', appGw, web1RedirectConfiguration)
+          }
+        }
+      }
+      {
+        name: 'web2RedirectRoutingRule'
+        properties: {
+          ruleType: 'Basic'
+          priority: 20
+          httpListener: {
+            id: resourceId('Microsoft.Network/applicationGateways/httpListeners', appGw, publicHttpListenerApp2)
+          }
+          redirectConfiguration:{
+            id: resourceId('Microsoft.Network/applicationGateways/redirectConfigurations', appGw, web2RedirectConfiguration)
           }
         }
       }
