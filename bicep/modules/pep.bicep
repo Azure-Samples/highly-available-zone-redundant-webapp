@@ -13,8 +13,8 @@ param privateDnsZoneId string
 //    2. Private link service connection to the target resource, 
 //    3. Private DNS zone group, linked to a VNet-linked private DNS Zone
 
-resource functionApp1PepResource 'Microsoft.Network/privateEndpoints@2022-01-01' = {
-  name: '${resourceName}-pep'
+resource pepResource 'Microsoft.Network/privateEndpoints@2022-01-01' = {
+  name: '${resourceName}-${groupId}-pep'
   location: location
   tags: tags
   properties: {
@@ -26,9 +26,7 @@ resource functionApp1PepResource 'Microsoft.Network/privateEndpoints@2022-01-01'
         name: 'peplink'
         properties: {
           privateLinkServiceId: resourceId
-          groupIds: [
-            groupId
-          ]
+          groupIds: [ groupId ]
         }
       }
     ]

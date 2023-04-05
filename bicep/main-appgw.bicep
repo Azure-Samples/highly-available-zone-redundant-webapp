@@ -146,8 +146,8 @@ module functionApp1PepModule 'modules/pep.bicep' = {
     location: location
     tags: tags
     groupId: 'sites'
-    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.functionApp1
-    subnetId: networkModule.outputs.subnetIds.appGateway
+    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.functions
+    subnetId: networkModule.outputs.subnetIds.functionsFrontend
   }
 }
 
@@ -159,7 +159,7 @@ module blobStoragePepModule 'modules/pep.bicep' = {
     location: location
     tags: tags
     groupId: 'blob'
-    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.blob
+    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.blobs
     subnetId: networkModule.outputs.subnetIds.storage
   }
 }
@@ -172,7 +172,7 @@ module tableStoragePepModule 'modules/pep.bicep' = {
     location: location
     tags: tags
     groupId: 'table'
-    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.table
+    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.tables
     subnetId: networkModule.outputs.subnetIds.storage
   }
 }
@@ -185,7 +185,7 @@ module queueStoragePepModule 'modules/pep.bicep' = {
     location: location
     tags: tags
     groupId: 'queue'
-    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.queue
+    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.queues
     subnetId: networkModule.outputs.subnetIds.storage
   }
 }
@@ -224,8 +224,8 @@ module servicebusPepModule 'modules/pep.bicep' = {
     location: location
     tags: tags
     groupId: 'namespace'
-    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.servicebus
-    subnetId: networkModule.outputs.subnetIds.servicebus
+    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.serviceBus
+    subnetId: networkModule.outputs.subnetIds.serviceBus
   }
 }
 
@@ -237,8 +237,8 @@ module searchPepModule 'modules/pep.bicep' = {
     location: location
     tags: tags
     groupId: 'searchService'
-    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.cogSearch
-    subnetId: networkModule.outputs.subnetIds.cogSearch
+    privateDnsZoneId: networkModule.outputs.privateDnsZoneIds.search
+    subnetId: networkModule.outputs.subnetIds.search
   }
 }
 
@@ -312,7 +312,8 @@ module functionsModule 'modules/functions.bicep' = {
     applicationName: applicationName
     location: location
     tags: tags
-    vnetSubnetId: networkModule.outputs.subnetIds.functionsFrontend
+    vnetSubnetId: networkModule.outputs.subnetIds.functionsBackend
+    developmentEnvironment: developmentEnvironment
     appSettings: {
       APPINSIGHTS_INSTRUMENTATIONKEY: insightsResource.properties.InstrumentationKey
       SQL_SERVER_CONNECTION_STRING: '@Microsoft.KeyVault(SecretUri=${keyvaultResource.properties.vaultUri}secrets/${sqlConnectionStringSecretName}/)'
@@ -663,7 +664,7 @@ resource cogSearchResource 'Microsoft.Search/searchServices@2020-08-01' = {
     name: 'standard'
   }
   properties: {
-    replicaCount: developmentEnvironment ? 3 : 1
+    replicaCount: developmentEnvironment ? 1 : 3
     publicNetworkAccess: 'disabled'
   }
 }
@@ -729,6 +730,7 @@ resource keyvaultResource 'Microsoft.KeyVault/vaults@2022-07-01' = {
     }
     tenantId: tenant().tenantId
     publicNetworkAccess: 'disabled'
+    accessPolicies: []
   }
   resource redisSecretResource 'secrets@2022-07-01' = {
     name: redisConnectionStringSecretName
@@ -856,3 +858,5 @@ output applicationName string = applicationName
 output environmentOutput object = environment()
 output insightsInstrumentationKey string = insightsResource.properties.InstrumentationKey
 output staticWebAppHostname string = staticWebAppResource.properties.defaultHostname
+output webapp1Name string = appServicesModule.outputs.webapp1Name
+output webapp2Name string = appServicesModule.outputs.webapp2Name

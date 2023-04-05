@@ -3,7 +3,7 @@ param location string
 param tags object
 param appSettings object
 param vnetSubnetId string
-param developmentEnvironment bool = false
+param developmentEnvironment bool
 
 
 // VARS
@@ -58,11 +58,11 @@ resource functionsPlanResource 'Microsoft.Web/serverfarms@2022-03-01' = {
     tier: 'ElasticPremium'
     size: 'EP2'
     family: 'EP'
-    capacity: developmentEnvironment ? 3 : 1    // Minimum 3 instances required for zone-redundancy
+    capacity: developmentEnvironment ? 1 : 3    // Minimum 3 instances required for zone-redundancy
   }
   properties: {
     maximumElasticWorkerCount: 6
-    zoneRedundant: !developmentEnvironment  
+    zoneRedundant: !developmentEnvironment
   }
 }
 

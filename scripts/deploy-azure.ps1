@@ -1,4 +1,4 @@
-$rg = 'hazrweb3-wus3-rg'            # <-- Name of Resource Group to deploy to.
+$rg = 'hazrweb8-wus3-rg'            # <-- Name of Resource Group to deploy to.
 $certKeyVault = 'fscale-kv'         # <-- Name of Key Vault that stores TLS cert. Does not need to be in the same resource group.
 $certSecretId = 'hazr-fscale-nz'    # <-- Secret Id of the certificate
 $appGwSslCertKeyVaultId = "https://$certKeyVault.vault.azure.net/secrets/$certSecretId"

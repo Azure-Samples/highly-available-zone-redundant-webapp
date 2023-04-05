@@ -365,15 +365,15 @@ resource privateSqlDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
 
 output privateDnsZoneIds object = {
   blobs: privateBlobsDnsZone.id
-  cogSearch: privateCogSearchDnsZone.id
   cosmos: privateCosmosDnsZone.id
   files: privateFilesDnsZone.id
   functions: privateFunctionsDnsZone.id
   keyvault: privateKeyvaultDnsZone.id
   queues: privateQueuesDnsZone.id
   redis: privateRedisDnsZone.id
-  servicebus: privateServicebusDnsZone.id
-  sql: privateSqlDnsZone.id
+  search: privateCogSearchDnsZone.id
+  serviceBus: privateServicebusDnsZone.id
+  sqlServer: privateSqlDnsZone.id
   tables: privateTablesDnsZone.id
 }
 

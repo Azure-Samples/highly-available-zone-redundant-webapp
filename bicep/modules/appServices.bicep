@@ -4,7 +4,7 @@ param tags object
 param appSettings object
 param vnetSubnetId string
 param appServicePlanPremiumSku string = 'PremiumV3'
-param developmentEnvironment bool = false
+param developmentEnvironment bool
 
 // VARS
 var appServicePlan = '${applicationName}-plan'
@@ -17,14 +17,14 @@ var appServicePlanPremiumSkus = {
     tier: 'PremiumV2'
     size: 'P2v2'
     family: 'Pv2'
-    capacity: developmentEnvironment ? 3 : 1
+    capacity: developmentEnvironment ? 1 : 3
   }
   PremiumV3: {
     name: 'P1v3'
     tier: 'PremiumV3'
     size: 'P1v3'
     family: 'Pv3'
-    capacity: developmentEnvironment ? 3 : 1
+    capacity: developmentEnvironment ? 1 : 3
   }
 }
 
@@ -39,7 +39,7 @@ resource appservicePlanResource 'Microsoft.Web/serverfarms@2022-03-01' = {
   properties: {
     reserved: true          // linux
     zoneRedundant: !developmentEnvironment
-    targetWorkerCount: developmentEnvironment ? 3 : 1    // Minimum 3 instances required for zone-redundancy
+    targetWorkerCount: developmentEnvironment ? 1 : 3    // Minimum 3 instances required for zone-redundancy
   }
 }
 
