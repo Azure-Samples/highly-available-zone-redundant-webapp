@@ -4,3 +4,4 @@ main.json
 _work
 _webapp_deploy.zip
 _functionapp_deploy.zip
+scripts/_test.ps1
