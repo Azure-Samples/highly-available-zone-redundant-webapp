@@ -41,17 +41,22 @@ param appServicePlanPremiumSku string = 'PremiumV3'
 @description('Optional. When true will deploy a cost-optimised environment for development purposes. Note that when this param is true, the deployment is not suitable or recommended for Production environments. Default = false.')
 param developmentEnvironment bool = false
 
+@description('The Id of a Key Vault certificate that contains the TLS certificate for the app gateway, for example, \'https://myvault.vault.azure.net/secrets/mycert\'.')
 param appGwSslCertKeyVaultId string
 
+@description('The Id of an Azure Identity created with the \'az identity create\' command. This identity will be assigned to the Application Gateway and will be used to access the Key Vault certificate specified in the appGwSslCertKeyVaultId parameter.')
 param appGwUserIdentity string
 
-param web1Hostname string
-param web2Hostname string
+@description('Fully qualified domain name for web app 1. For example, \'web1.contoso.com\'.')
+param webapp1Hostname string
 
-param appGwPipDnsLabel string = '${applicationName}-appgw'
+@description('Fully qualified domain name for web app 2. For example, \'web2.contoso.com\'.')
+param webapp2Hostname string
 
 
 // VARS
+
+var appGwPipDnsLabel = '${applicationName}-appgw'
 
 // Static web app name
 var swa = '${applicationName}-swa'
@@ -66,13 +71,15 @@ var publicHttpsListenerApp1 = 'publicHttpsListenerApp1'
 var publicHttpsListenerApp2 = 'publicHttpsListenerApp2'
 var app1BackendPool = 'app1BackendPool'
 var app2BackendPool = 'app2BackendPool'
-var backendHttpSettings = 'backendHttpSettings'
+var app1BackendHttpSettings = 'app1BackendHttpSettings'
+var app2BackendHttpSettings = 'app2BackendHttpSettings'
 var web1RedirectConfiguration = 'web1RedirectConfiguration'
 var web2RedirectConfiguration = 'web2RedirectConfiguration'
 var appGwWafPolicy = '${applicationName}-appgw-waf'
 var appGwPip = '${applicationName}-appgw-pip'
 var appGwPublicSslCert = 'apimPublicSslCert'
-
+var app1BackendProbe = 'app1BackendProbe'
+var app2BackendProbe = 'app2BackendProbe'
 
 var redis = '${applicationName}-cache'
 
@@ -284,9 +291,33 @@ module keyvaultPepModule 'modules/pep.bicep' = {
 }
 
 // APP SERVICES
-module appServicesModule 'modules/appServices.bicep' = {
-  name: 'appServicesModule'
+module appServices1Module 'modules/appServices.bicep' = {
+  name: 'appServices1Module'
   params: {
+    webappName: '${applicationName}-app1'
+    applicationName: applicationName
+    location: location
+    tags: tags
+    vnetSubnetId: networkModule.outputs.subnetIds.appServices
+    appServicePlanPremiumSku: appServicePlanPremiumSku
+    developmentEnvironment: developmentEnvironment
+    appSettings: {
+      APPINSIGHTS_INSTRUMENTATIONKEY: insightsResource.properties.InstrumentationKey
+      AZURE_SERVICE_BUS_FQ_NAMESPACE: replace(replace(servicebusResource.properties.serviceBusEndpoint, 'https://', ''), ':443/', '')
+      AZURE_SERVICE_BUS_QUEUE_NAME: servicebusQueueName
+      AZURE_COSMOSDB_ENDPOINT_URI: cosmosResource.properties.documentEndpoint
+      AZURE_COSMOSDB_DATABASE_NAME: cosmosDatabaseName
+      REDIS_CONNECTION_STRING: '@Microsoft.KeyVault(SecretUri=${keyvaultResource.properties.vaultUri}secrets/${redisConnectionStringSecretName}/)'
+      AZURE_SEARCH_ENDPOINT_URI: searchEndpointUrl[environment().name]
+      AZURE_SEARCH_API_KEY: '@Microsoft.KeyVault(SecretUri=${keyvaultResource.properties.vaultUri}secrets/${searchApiKeySecretName}/)'
+    }
+  }
+}
+
+module appServices2Module 'modules/appServices.bicep' = {
+  name: 'appServices2Module'
+  params: {
+    webappName: '${applicationName}-app2'
     applicationName: applicationName
     location: location
     tags: tags
@@ -422,7 +453,7 @@ resource appGWResource 'Microsoft.Network/applicationGateways@2022-05-01' = {
         properties: {
           backendAddresses:[
             {
-              fqdn: appServicesModule.outputs.webapp1Hostname
+              fqdn: webapp1Hostname
             }
           ]
         }
@@ -432,22 +463,69 @@ resource appGWResource 'Microsoft.Network/applicationGateways@2022-05-01' = {
         properties: {
           backendAddresses:[
             {
-              fqdn: appServicesModule.outputs.webapp2Hostname
+              fqdn: webapp2Hostname
             }
           ]
         }
       }
     ]
+    probes: [
+      {
+        name: app1BackendProbe
+        properties: {
+          host: appServices1Module.outputs.webappHostname
+          pickHostNameFromBackendHttpSettings: false
+          pickHostNameFromBackendSettings: false
+          protocol: 'Https'
+          port: 443
+          path: '/'
+          timeout: 10
+          interval: 60
+          unhealthyThreshold: 3
+        }
+      }
+      {
+        name: app2BackendProbe
+        properties: {
+          host: appServices2Module.outputs.webappHostname
+          pickHostNameFromBackendHttpSettings: false
+          pickHostNameFromBackendSettings: false
+          protocol: 'Https'
+          port: 443
+          path: '/'
+          timeout: 10
+          interval: 60
+          unhealthyThreshold: 3
+        }
+      }
+    ]
     backendHttpSettingsCollection: [
       {
-        name: backendHttpSettings
+        name: app1BackendHttpSettings
         properties: {
           port: 443
           protocol: 'Https'
           cookieBasedAffinity: 'Disabled'
-          pickHostNameFromBackendAddress: true
+          pickHostNameFromBackendAddress: false
           requestTimeout: appGwBackendRequestTimeout
           //TODO: Use well known CA certificate = Yes
+          probe: {
+            id: resourceId('Microsoft.Network/applicationGateways/probes', appGw, app1BackendProbe)
+          }
+        }
+      }
+      {
+        name: app2BackendHttpSettings
+        properties: {
+          port: 443
+          protocol: 'Https'
+          cookieBasedAffinity: 'Disabled'
+          pickHostNameFromBackendAddress: false
+          requestTimeout: appGwBackendRequestTimeout
+          //TODO: Use well known CA certificate = Yes
+          probe: {
+            id: resourceId('Microsoft.Network/applicationGateways/probes', appGw, app2BackendProbe)
+          }
         }
       }
     ]
@@ -474,7 +552,7 @@ resource appGWResource 'Microsoft.Network/applicationGateways@2022-05-01' = {
           }
           protocol: 'Http'
           requireServerNameIndication: false
-          hostNames: [web1Hostname]
+          hostNames: [webapp1Hostname]
         }
       }
       {
@@ -491,7 +569,7 @@ resource appGWResource 'Microsoft.Network/applicationGateways@2022-05-01' = {
           }
           protocol: 'Http'
           requireServerNameIndication: false
-          hostNames: [web2Hostname]
+          hostNames: [webapp2Hostname]
         }
       }
       {
@@ -510,7 +588,7 @@ resource appGWResource 'Microsoft.Network/applicationGateways@2022-05-01' = {
           sslCertificate:{
             id: resourceId('Microsoft.Network/applicationGateways/sslCertificates', appGw, appGwPublicSslCert)
           }
-          hostNames: [web1Hostname]
+          hostNames: [webapp1Hostname]
         }
       }
       {
@@ -529,7 +607,7 @@ resource appGWResource 'Microsoft.Network/applicationGateways@2022-05-01' = {
           sslCertificate:{
             id: resourceId('Microsoft.Network/applicationGateways/sslCertificates', appGw, appGwPublicSslCert)
           }
-          hostNames: [web2Hostname]
+          hostNames: [webapp2Hostname]
         }
       }
     ]
@@ -598,7 +676,7 @@ resource appGWResource 'Microsoft.Network/applicationGateways@2022-05-01' = {
             id: resourceId('Microsoft.Network/applicationGateways/backendAddressPools', appGw, app1BackendPool)
           }
           backendHttpSettings: {
-            id: resourceId('Microsoft.Network/applicationGateways/backendHttpSettingsCollection', appGw, backendHttpSettings)
+            id: resourceId('Microsoft.Network/applicationGateways/backendHttpSettingsCollection', appGw, app1BackendHttpSettings)
           }
         }
       }
@@ -614,7 +692,7 @@ resource appGWResource 'Microsoft.Network/applicationGateways@2022-05-01' = {
             id: resourceId('Microsoft.Network/applicationGateways/backendAddressPools', appGw, app2BackendPool)
           }
           backendHttpSettings: {
-            id: resourceId('Microsoft.Network/applicationGateways/backendHttpSettingsCollection', appGw, backendHttpSettings)
+            id: resourceId('Microsoft.Network/applicationGateways/backendHttpSettingsCollection', appGw, app2BackendHttpSettings)
           }
         }
       }
@@ -803,8 +881,8 @@ resource keyVaultPolicies 'Microsoft.KeyVault/vaults/accessPolicies@2022-11-01' 
   properties: {
     accessPolicies: [
       {
-        objectId: appServicesModule.outputs.webapp1Identity.principalId
-        tenantId: appServicesModule.outputs.webapp1Identity.tenantId
+        objectId: appServices1Module.outputs.webappIdentity.principalId
+        tenantId: appServices1Module.outputs.webappIdentity.tenantId
         permissions: {
           secrets: [
             'list'
@@ -865,22 +943,22 @@ resource functionApp1RoleAssignmentServiceBus 'Microsoft.Authorization/roleAssig
 
 // Assigns Web App data role to Service Bus
 resource webApp1RoleAssignmentServiceBus 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(servicebusResource.id, appServicesModule.name, '1', roleDefinitionIds.servicebus)
+  name: guid(servicebusResource.id, appServices1Module.name, '1', roleDefinitionIds.servicebus)
   scope: servicebusResource
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionIds.servicebus)
-    principalId: appServicesModule.outputs.webapp1Identity.principalId
+    principalId: appServices1Module.outputs.webappIdentity.principalId
     principalType: 'ServicePrincipal'
   }
 }
 
 // Assigns Web App reader role to Key Vault
 resource webAppRoleAssignmentKeyVault 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyvaultResource.id, appServicesModule.name, '1', roleDefinitionIds.keyvault)
+  name: guid(keyvaultResource.id, appServices1Module.name, '1', roleDefinitionIds.keyvault)
   scope: keyvaultResource
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionIds.keyvault)
-    principalId: appServicesModule.outputs.webapp1Identity.principalId
+    principalId: appServices1Module.outputs.webappIdentity.principalId
     principalType: 'ServicePrincipal'
   }
 }
@@ -888,10 +966,10 @@ resource webAppRoleAssignmentKeyVault 'Microsoft.Authorization/roleAssignments@2
 // Cosmos Data plane RBAC role assignment
 resource webAppRoleAssignmentCosmosDbSql 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2022-05-15' = {
   parent: cosmosResource
-  name: guid(roleDefinitionIds.cosmosdbDataReader, appServicesModule.name, '1', cosmosResource.id)
+  name: guid(roleDefinitionIds.cosmosdbDataReader, appServices1Module.name, '1', cosmosResource.id)
   properties: {
     roleDefinitionId: '${cosmosResource.id}/sqlRoleDefinitions/${roleDefinitionIds.cosmosdbDataReader}'
-    principalId: appServicesModule.outputs.webapp1Identity.principalId
+    principalId: appServices1Module.outputs.webappIdentity.principalId
     scope: cosmosResource.id
   }
 }
@@ -903,5 +981,7 @@ output applicationName string = applicationName
 output environmentOutput object = environment()
 output insightsInstrumentationKey string = insightsResource.properties.InstrumentationKey
 output staticWebAppHostname string = staticWebAppResource.properties.defaultHostname
-output webapp1Name string = appServicesModule.outputs.webapp1Name
-output webapp2Name string = appServicesModule.outputs.webapp2Name
+output webapp1Name string = appServices1Module.outputs.webappName
+output webapp2Name string = appServices2Module.outputs.webappName
+output webapp1Hostname string = appServices1Module.outputs.webappHostname
+output webapp2Hostname string = appServices2Module.outputs.webappHostname
