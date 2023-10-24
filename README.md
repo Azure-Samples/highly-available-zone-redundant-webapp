@@ -10,7 +10,6 @@ products:
 - azure-front-door
 - azure-cache-redis
 - azure-cognitive-search
-- azure-search
 - azure-cosmos-db
 - azure-key-vault
 - azure-blob-storage
